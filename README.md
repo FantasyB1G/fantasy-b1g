@@ -141,10 +141,12 @@ cached in `.cache/`). Force either one with `--source cbbd` or `--source espn`.
 3. The site goes live at `https://<you>.github.io/fantasy-b1g/` a minute
    or so after each push.
 
-### Optional: automatic daily updates
+### Automatic updates
 
-`.github/workflows/update.yml` fetches stats every morning (Nov-Apr) and
-commits them, so the site stays current without you running anything. Add
+`.github/workflows/update.yml` fetches stats and commits them every morning
+(Nov-Apr) and whenever you push a change to `league/` (draft, bench, pickups,
+stat fixes). The site stays current even if you publish a lineup change
+without clicking Update stats first. Add
 your key under **Settings > Secrets and variables > Actions > New repository
 secret** as `CBBD_API_KEY`. It also runs from the Actions tab on demand.
 If you use it, `git pull` before editing lineups. Delete the file if you'd

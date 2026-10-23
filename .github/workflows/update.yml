@@ -1,16 +1,26 @@
-# Optional: pulls new box scores every morning and commits them, so the site
-# stays current without you running anything. Needs the CBBD_API_KEY repo
-# secret (Settings > Secrets and variables > Actions); without it, it falls
-# back to the ESPN source. Remember to `git pull` before editing lineups.
+# Pulls new box scores and commits them, so the site stays current without
+# you running anything. Runs every morning, whenever you push a change to the
+# league files (draft, bench, pickups, stat fixes), and on demand from the
+# Actions tab. Needs the CBBD_API_KEY repo secret (Settings > Secrets and
+# variables > Actions); without it, it falls back to the ESPN source.
+# Its own commits don't re-trigger it (GitHub skips pushes made by workflows).
 name: Update stats
 
 on:
   schedule:
     - cron: "0 11 * 11-12,1-4 *"   # 6am ET daily, Nov-Apr
+  push:
+    branches: [main]
+    paths: ["league/**"]
   workflow_dispatch:
 
 permissions:
   contents: write
+
+# one run at a time; a new push waits for the current run instead of racing it
+concurrency:
+  group: update-stats
+  cancel-in-progress: false
 
 jobs:
   update:
@@ -29,5 +39,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data league
-          git diff --cached --quiet || git commit -m "Update stats $(date -u +%Y-%m-%d)"
+          if git diff --cached --quiet; then echo "No changes."; exit 0; fi
+          git commit -m "Update stats $(date -u +%Y-%m-%d)"
+          git pull --rebase
           git push

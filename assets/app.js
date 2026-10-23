@@ -752,9 +752,31 @@
     LIVE.tick = tick;
     tick();
   }
+  // Coming back to the tab / home-screen app: pick up anything published since
+  // (redraws in place), otherwise just refresh live scores.
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden && LIVE.tick && !LIVE.demo) { clearTimeout(LIVE.timer); LIVE.tick(); }
+    if (document.hidden) return;
+    checkForUpdate().then(function (changed) {
+      if (!changed && LIVE.tick && !LIVE.demo) { clearTimeout(LIVE.timer); LIVE.tick(); }
+    });
   });
+  var checking = false;
+  function checkForUpdate() {
+    if (checking || document.hidden || !IDX || LIVE.demo) return Promise.resolve(false);
+    checking = true;
+    return fetch("data/index.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (idx) {
+      checking = false;
+      if (idx.built === IDX.built) return false;
+      IDX = idx;
+      cache = {};  // season files are re-fetched under the new version stamp
+      setFooter();
+      route(true);
+      return true;
+    }).catch(function () { checking = false; return false; });
+  }
+  function setFooter() {
+    document.getElementById("foot").innerHTML = "Fantasy B1G &middot; est. 2015 &middot; data built " + esc(IDX.built.replace("T", " ").replace("Z", " UTC"));
+  }
 
   function tile(label, value, note) {
     return '<div class="tile"><div class="label">' + label + '</div><div class="value">' + value + '</div><div class="note">' + (note || "") + "</div></div>";
@@ -1186,7 +1208,7 @@
   }
 
   // ------------------------------------------------------------ router
-  function route() {
+  function route(keepScroll) {
     resizeHandlers = [];
     clearTimeout(LIVE.timer);
     LIVE.tick = null;
@@ -1213,7 +1235,7 @@
       else notFound();
     } catch (e) { showError(e); }
     if (p && p.catch) p.catch(showError);
-    window.scrollTo(0, 0);
+    if (keepScroll !== true) window.scrollTo(0, 0);
   }
   function showError(e) {
     console.error(e);
@@ -1240,7 +1262,15 @@
     clearTimeout(rt);
     rt = setTimeout(function () { resizeHandlers.forEach(function (f) { f(); }); }, 150);
   });
-  window.addEventListener("hashchange", route);
+  window.addEventListener("hashchange", function () { route(); });
+
+  // ↻ button: only when running as a home-screen app (no browser reload button there)
+  var standalone = window.navigator.standalone === true || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+  var refreshBtn = document.getElementById("refresh");
+  if (standalone && refreshBtn) {
+    refreshBtn.hidden = false;
+    refreshBtn.addEventListener("click", function () { location.reload(); });
+  }
 
   fetch("data/index.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (idx) {
     IDX = idx;
@@ -1248,8 +1278,8 @@
     return getJSON("data/demo/meta.json").then(function (m) { LIVE.now = Date.parse(m.now); LIVE.label = m.label; },
       function () { LIVE.demo = false; });  // no demo files (python tools/make_demo.py builds them): show the real site
   }).then(function () {
-    var idx = IDX;
-    document.getElementById("foot").innerHTML = "Fantasy B1G &middot; est. 2015 &middot; data built " + esc(idx.built.replace("T", " ").replace("Z", " UTC"));
+    setFooter();
     route();
+    setInterval(checkForUpdate, 5 * 60 * 1000);  // and every 5 minutes while open
   }).catch(showError);
 })();

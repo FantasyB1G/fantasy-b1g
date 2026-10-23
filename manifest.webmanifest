@@ -1,0 +1,15 @@
+{
+  "name": "Fantasy B1G",
+  "short_name": "Fantasy B1G",
+  "description": "Fantasy Big Ten basketball league: live standings, history, records and Hall of Fame.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f6f3",
+  "theme_color": "#14306b",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

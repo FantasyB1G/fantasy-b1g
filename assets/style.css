@@ -344,3 +344,10 @@ a.school-link .tlogo { vertical-align: 0; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .tlogo { background: #f0efec; border-radius: 4px; padding: 1px; }
 }
+
+/* ---------- home-screen app (iPhone notch / home bar) ---------- */
+.top { padding-top: env(safe-area-inset-top); }
+.top-inner { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+footer.foot { padding-bottom: max(30px, env(safe-area-inset-bottom)); }
+#refresh { font-size: 15px; line-height: 1; padding: 4px 9px; }
+#refresh[hidden] { display: none; }

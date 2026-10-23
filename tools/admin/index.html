@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="admin-token" content="__TOKEN__">
+  <title>Fantasy B1G Admin</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    .bar { position: sticky; top: 0; z-index: 10; background: var(--accent); color: #fff; }
+    .bar .top-inner { gap: 10px; }
+    .bar .status { font-size: 13px; color: rgba(255, 255, 255, 0.8); flex: 1; min-width: 0; }
+    .btn {
+      font: inherit; font-size: 13px; font-weight: 600; border-radius: 7px; padding: 6px 12px; cursor: pointer;
+      border: 1px solid var(--axis); background: var(--surface); color: var(--ink);
+    }
+    .btn:hover { border-color: var(--ink-2); }
+    .btn.primary { background: #1c5cab; border-color: #1c5cab; color: #fff; }
+    .btn.danger { color: var(--bad); }
+    .btn.small { padding: 2px 8px; font-size: 12px; font-weight: 500; }
+    .btn:disabled { opacity: 0.5; cursor: wait; }
+    .bar .btn { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.3); color: #fff; }
+    .bar .btn.primary { background: #fff; color: var(--accent); border-color: #fff; }
+    input[type="text"], input[type="number"], input[type="date"], select.in {
+      font: inherit; font-size: 14px; color: var(--ink); background: var(--surface);
+      border: 1px solid var(--axis); border-radius: 6px; padding: 5px 7px; min-width: 0;
+    }
+    input.player { width: 100%; min-width: 150px; }
+    input.num { width: 64px; }
+    td input.player { width: 100%; }
+    .school { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .school.warn { color: var(--bad); }
+    .form-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+    .form-row label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+    .toast {
+      position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #0b0b0b; color: #fff;
+      padding: 8px 14px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 50;
+    }
+    .toast.on { opacity: 0.92; }
+    .toast.err { background: #b3261e; }
+    pre.log {
+      background: var(--surface-2); border-radius: 8px; padding: 10px; font-size: 12px; max-height: 360px;
+      overflow: auto; white-space: pre-wrap; margin: 10px 0 0;
+    }
+    .tabs { margin-bottom: 16px; }
+    .hint { color: var(--muted); font-size: 13px; margin: -4px 0 12px; }
+    tr.current td { background: rgba(42, 120, 214, 0.08); }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="top-inner">
+      <a class="brand" href="/admin"><span class="logo">B1G</span> Admin</a>
+      <span class="status" id="status">Loading...</span>
+      <a class="btn" href="/" target="_blank" rel="noopener">Preview site</a>
+      <button class="btn" id="btn-update" type="button" title="Pull box scores and rebuild the site data">Update stats</button>
+      <button class="btn primary" id="btn-publish" type="button">Publish</button>
+    </div>
+  </header>
+  <main id="admin"><div class="loading">Loading...</div></main>
+  <div class="toast" id="toast"></div>
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

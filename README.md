@@ -20,6 +20,23 @@ data/seasons/*.json   data/mm/*.json   data/index.json   <- the site reads these
 Historical seasons (2016-2026) were imported once from the old Google Sheet
 with `tools/import_xlsx.py` and don't change.
 
+## Admin app (point and click)
+
+```bash
+python tools/admin.py
+```
+
+This opens a local admin page at http://127.0.0.1:8770/admin with tabs for:
+- **Draft:** autocomplete from Big Ten rosters, plus the March Madness draft
+- **Bench:** each team's next game #, one click to set the bench
+- **Pickups:** add/drop with a date
+- **Stat fixes:** manual overrides
+- **Hall of Fame:** members, ballots, "start next year's ballot", induct
+
+Every change saves to the same files as the commands below. The **Update
+stats** and **Publish** buttons replace `update` and `git commit/push`. It runs
+only on your computer; press Ctrl+C in the terminal to stop it.
+
 ## Season workflow
 
 ```bash

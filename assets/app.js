@@ -31,8 +31,15 @@
     return s.replace(/\s+/g, " ").trim();
   }
   function pkey(name) { var k = normName(name); return (IDX.aliases && IDX.aliases[k]) || k; }
+  // assets/logos/<slug>.png (Big Ten schools); a missing logo just hides itself
+  function logo(school, size) {
+    if (!school) return "";
+    var slug = school.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    return '<img class="tlogo" src="assets/logos/' + slug + '.png" alt="" width="' + (size || 16) + '" height="' + (size || 16) +
+      '" loading="lazy" onerror="this.remove()">';
+  }
   function slink(school) {
-    return school ? '<a href="#/team/' + encodeURIComponent(school) + '">' + esc(school) + "</a>" : "";
+    return school ? '<a class="school-link" href="#/team/' + encodeURIComponent(school) + '">' + logo(school) + esc(school) + "</a>" : "";
   }
   function plink(name) {
     if (!name) return '<span class="muted">--</span>';
@@ -1117,7 +1124,7 @@
       t += c.t; gp += c.gp; s = add(s, c.s);
       c.lines.forEach(function (x) { owners[x.m] = (owners[x.m] || 0) + x.t; });
     });
-    var html = '<div class="page-head"><div><div class="crumbs"><a href="#/teams">Teams</a></div><h1>' + esc(school) + '</h1><div class="sub">' + cs.length + " drafted players</div></div></div>";
+    var html = '<div class="page-head"><div><div class="crumbs"><a href="#/teams">Teams</a></div><h1 style="display:flex;align-items:center;gap:12px">' + logo(school, 40) + esc(school) + '</h1><div class="sub">' + cs.length + " drafted players</div></div></div>";
     html += '<div class="tiles">' + tile("Fantasy points", fmt(t), fmt(gp) + " games &middot; " + fmt1(gp ? t / gp : 0) + " per game") +
       tile("Best player", '<a href="#/player/' + encodeURIComponent(cs[0].p.key) + '">' + esc(cs[0].p.name) + "</a>", fmt(cs[0].t) + " pts at " + esc(school)) +
       tile("Hall of Famers", String(cs.filter(function (c) { return c.p.status === "hof"; }).length), "") +

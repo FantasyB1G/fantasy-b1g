@@ -936,7 +936,7 @@
     var members = (H.members || []).slice().sort(function (a, b) { return b.inducted - a.inducted || b.vote - a.vote; });
     var mRows = members.map(function (h) {
       var p = byKey[pkey(h.player)] || {};
-      return "<tr><td>" + plink(h.player) + "</td><td>" + mgr(h.owner) + "</td><td>" + slink(p.school) + "</td><td>" + esc(h.years) + "</td><td>" + h.inducted + " <span class='muted'>(" + h.vote + "%)</span></td>" +
+      return "<tr><td>" + plink(h.player) + "</td><td>" + mgr(h.owner) + "</td><td>" + (p.schools && p.schools.length ? p.schools : [p.school]).filter(Boolean).map(slink).join(" / ") + "</td><td>" + esc(h.years) + "</td><td>" + h.inducted + " <span class='muted'>(" + h.vote + "%)</span></td>" +
         "<td class='n'>" + fmt(p.gp) + "</td><td class='n strong'>" + fmt(p.t) + "</td><td class='n'>" + fmt1(p.avg) + "</td><td class='n'>" + (p.rings || 0) + "</td></tr>";
     });
     var years = Object.keys(H.ballots || {}).sort().reverse();
@@ -987,7 +987,7 @@
         if (own && p.owners.indexOf(own) < 0) return false;
         if (p.status === "mmOnly" && stat !== "mmOnly") return false;
         if (stat === "eligible" ? !(p.status === "eligible" || p.status === "ballot") : stat && p.status !== stat) return false;
-        return !ql || p.name.toLowerCase().indexOf(ql) >= 0 || (p.school || "").toLowerCase().indexOf(ql) >= 0;
+        return !ql || p.name.toLowerCase().indexOf(ql) >= 0 || (p.schools || []).concat([p.school]).join(" ").toLowerCase().indexOf(ql) >= 0;
       }).sort(function (a, b) {
         var x = v(a, sortK), y = v(b, sortK);
         return (typeof x === "string" ? x.localeCompare(y) : x - y) * dir;
@@ -997,7 +997,7 @@
         return '<th class="sortable ' + (c[2] ? "n " : "") + (c[0] === sortK ? "sorted" : "") + '" data-k="' + c[0] + '">' + c[1] + (c[0] === sortK ? (dir < 0 ? " &darr;" : " &uarr;") : "") + "</th>";
       }).join("");
       var rows = list.map(function (p) {
-        return "<tr><td><a href='#/player/" + encodeURIComponent(p.key) + "'>" + esc(p.name) + "</a> " + (p.status === "hof" || p.status === "active" ? statusBadge(p.status) : "") + "</td><td>" + slink(p.school) +
+        return "<tr><td><a href='#/player/" + encodeURIComponent(p.key) + "'>" + esc(p.name) + "</a> " + (p.status === "hof" || p.status === "active" ? statusBadge(p.status) : "") + "</td><td>" + (p.schools && p.schools.length ? p.schools : [p.school]).filter(Boolean).map(slink).join(" / ") +
           "</td><td>" + yearsText(p.years) + "</td><td>" + mgr(p.owner) + "</td><td class='n'>" + p.gp + "</td>" + statCells(p.s) + "<td class='n strong'>" + fmt(p.t) + "</td><td class='n'>" + fmt1(p.avg) + "</td><td class='n'>" + (p.rings || "") + "</td></tr>";
       });
       var el = document.getElementById("ptable");
@@ -1020,7 +1020,7 @@
     var p = IDX.players.filter(function (x) { return x.key === key; })[0];
     if (!p) return notFound("Player not found.");
     var html = '<div class="page-head"><div><div class="crumbs"><a href="#/players">Players</a></div><h1>' + esc(p.name) + " " + statusBadge(p.status) + "</h1>" +
-      '<div class="sub">' + slink(p.school) + (p.school ? " &middot; " : "") + (p.years.length ? yearsText(p.years) : "March Madness only") + " &middot; " + p.owners.map(mgr).join(", ") + "</div></div></div>";
+      '<div class="sub">' + (p.schools && p.schools.length ? p.schools : [p.school]).filter(Boolean).map(slink).join(" &rarr; ") + (p.school ? " &middot; " : "") + (p.years.length ? yearsText(p.years) : "March Madness only") + " &middot; " + p.owners.map(mgr).join(", ") + "</div></div></div>";
     if (p.status === "mmOnly") {
       var mt = p.mm.reduce(function (a, s) { return a + s.t; }, 0);
       html += '<div class="tiles">' + tile("March Madness games", fmt(p.mm.reduce(function (a, s) { return a + s.gp; }, 0)), "") + tile("March Madness total", fmt(mt), "") + "</div>";
@@ -1031,10 +1031,10 @@
     html += '<div class="tiles">' + tile("Games", fmt(p.gp), p.zero ? p.zero + " zero-point game" + (p.zero > 1 ? "s" : "") : "") + tile("Career total", fmt(p.t), p.s.map(function (v, i) { return fmt(v) + " " + LABEL[STATS[i]].toLowerCase(); }).join(" &middot; ")) +
       tile("Per game", fmt1(p.avg), "") + tile("Rings", String(p.rings || 0), p.rings ? "won the league with this player" : "") + "</div>";
     var sRows = p.seasons.map(function (s) {
-      return "<tr><td><a href='#/season/" + s.year + "'>" + seasonLabel(s.year) + "</a></td><td>" + mgr(s.m) + "</td><td class='n'>" + s.gp + "</td>" + statCells(s.s) + "<td class='n strong'>" + fmt(s.t) + "</td><td class='n'>" + fmt1(s.gp ? s.t / s.gp : 0) + "</td></tr>";
+      return "<tr><td><a href='#/season/" + s.year + "'>" + seasonLabel(s.year) + "</a></td><td>" + slink(s.school) + "</td><td>" + mgr(s.m) + "</td><td class='n'>" + s.gp + "</td>" + statCells(s.s) + "<td class='n strong'>" + fmt(s.t) + "</td><td class='n'>" + fmt1(s.gp ? s.t / s.gp : 0) + "</td></tr>";
     });
-    sRows.push("<tr class='total'><td>Career</td><td></td><td class='n'>" + p.gp + "</td>" + statCells(p.s) + "<td class='n'>" + fmt(p.t) + "</td><td class='n'>" + fmt1(p.avg) + "</td></tr>");
-    html += card("By season", table("<th>Season</th><th>Owner</th>" + th("GP", 1) + statHeads() + th("Total", 1) + th("Avg", 1), sRows));
+    sRows.push("<tr class='total'><td>Career</td><td></td><td></td><td class='n'>" + p.gp + "</td>" + statCells(p.s) + "<td class='n'>" + fmt(p.t) + "</td><td class='n'>" + fmt1(p.avg) + "</td></tr>");
+    html += card("By season", table("<th>Season</th><th>School</th><th>Owner</th>" + th("GP", 1) + statHeads() + th("Total", 1) + th("Avg", 1), sRows));
     if (p.mm && p.mm.length) html += card("March Madness", mmTable(p));
     html += '<section class="card"><div class="card-head"><h2>Game log</h2></div><div id="glog" class="loading">Loading games...</div></section>';
     app.innerHTML = html;
@@ -1067,51 +1067,71 @@
   }
 
   // ------------------------------------------------------------ Big Ten teams
+  // Everything here is per season: a transfer's seasons count for the school
+  // he played for that year (index season lines carry their own school).
+  function schoolCareers(school) {
+    var champ = {};
+    IDX.seasons.forEach(function (s) { if (s.champion) champ[s.year] = s.champion; });
+    var latest = IDX.seasons[IDX.seasons.length - 1].year;
+    return IDX.players.map(function (p) {
+      var lines = p.seasons.filter(function (x) { return x.school === school; });
+      if (!lines.length) return null;
+      var c = { p: p, lines: lines, gp: 0, s: [0, 0, 0, 0, 0], t: 0, owners: [], years: [], rings: 0 };
+      lines.forEach(function (x) {
+        c.gp += x.gp; c.s = add(c.s, x.s); c.t += x.t;
+        if (c.owners.indexOf(x.m) < 0) c.owners.push(x.m);
+        if (c.years.indexOf(x.year) < 0) c.years.push(x.year);
+        if (x.gp && champ[x.year] === x.m) c.rings++;
+      });
+      c.avg = c.gp ? c.t / c.gp : 0;
+      c.active = p.status === "active" && c.years.indexOf(latest) >= 0;
+      c.moved = p.schools && p.schools.length > 1;
+      return c;
+    }).filter(Boolean).sort(function (a, b) { return b.t - a.t; });
+  }
   function pageTeams() {
-    var by = {};
-    IDX.players.forEach(function (p) {
-      if (!p.school || p.status === "mmOnly") return;
-      var b = by[p.school] = by[p.school] || { school: p.school, n: 0, t: 0, gp: 0, hof: 0, active: 0, best: null, owners: {} };
-      b.n++; b.t += p.t; b.gp += p.gp;
-      if (p.status === "hof") b.hof++;
-      if (p.status === "active") b.active++;
-      if (!b.best || p.t > b.best.t) b.best = p;
-      p.seasons.forEach(function (s) { b.owners[s.m] = (b.owners[s.m] || 0) + s.t; });
-    });
-    var list = Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return b.t - a.t; });
+    var names = {};
+    IDX.players.forEach(function (p) { p.seasons.forEach(function (x) { if (x.school) names[x.school] = 1; }); });
+    var list = Object.keys(names).map(function (school) {
+      var cs = schoolCareers(school), owners = {};
+      var b = { school: school, n: cs.length, t: 0, gp: 0, best: cs[0],
+        hof: cs.filter(function (c) { return c.p.status === "hof"; }).length, active: cs.filter(function (c) { return c.active; }).length };
+      cs.forEach(function (c) { b.t += c.t; b.gp += c.gp; c.lines.forEach(function (x) { owners[x.m] = (owners[x.m] || 0) + x.t; }); });
+      b.topOwner = Object.keys(owners).sort(function (x, y) { return owners[y] - owners[x]; })[0];
+      return b;
+    }).sort(function (a, b) { return b.t - a.t; });
     var rows = list.map(function (b, i) {
-      var topOwner = Object.keys(b.owners).sort(function (x, y) { return b.owners[y] - b.owners[x]; })[0];
       return "<tr><td class='rank'>" + (i + 1) + "</td><td class='strong'>" + slink(b.school) + "</td><td class='n'>" + b.n + "</td><td class='n'>" + b.active + "</td><td class='n'>" + b.hof +
-        "</td><td class='n'>" + fmt(b.gp) + "</td><td class='n strong'>" + fmt(b.t) + "</td><td class='n'>" + fmt1(b.gp ? b.t / b.gp : 0) + "</td><td><a href='#/player/" + encodeURIComponent(b.best.key) + "'>" + esc(b.best.name) +
-        "</a></td><td>" + mgr(topOwner) + "</td></tr>";
+        "</td><td class='n'>" + fmt(b.gp) + "</td><td class='n strong'>" + fmt(b.t) + "</td><td class='n'>" + fmt1(b.gp ? b.t / b.gp : 0) + "</td><td><a href='#/player/" + encodeURIComponent(b.best.p.key) + "'>" + esc(b.best.p.name) +
+        "</a></td><td>" + mgr(b.topOwner) + "</td></tr>";
     });
-    app.innerHTML = '<div class="page-head"><div><h1>Big Ten teams</h1><div class="sub">Fantasy production from each school\'s drafted players since 2015-16</div></div></div>' +
+    app.innerHTML = '<div class="page-head"><div><h1>Big Ten teams</h1><div class="sub">Fantasy production from each school&rsquo;s drafted players since 2015-16. Transfers count for the school they played for that season.</div></div></div>' +
       card("", table("<th></th><th>School</th>" + th("Players", 1) + th("Active", 1) + th("HOF", 1) + th("GP", 1) + th("Fantasy pts", 1) + th("Avg", 1) + "<th>Best player</th><th>Top owner</th>", rows));
   }
 
   function pageTeam(school) {
-    var players = IDX.players.filter(function (p) { return p.school === school && p.status !== "mmOnly"; }).sort(function (a, b) { return b.t - a.t; });
-    if (!players.length) return notFound("No drafted players from " + school + ".");
+    var cs = schoolCareers(school);
+    if (!cs.length) return notFound("No drafted players from " + school + ".");
     var t = 0, gp = 0, s = [0, 0, 0, 0, 0], owners = {};
-    players.forEach(function (p) {
-      t += p.t; gp += p.gp; s = add(s, p.s);
-      p.seasons.forEach(function (x) { owners[x.m] = (owners[x.m] || 0) + x.t; });
+    cs.forEach(function (c) {
+      t += c.t; gp += c.gp; s = add(s, c.s);
+      c.lines.forEach(function (x) { owners[x.m] = (owners[x.m] || 0) + x.t; });
     });
-    var html = '<div class="page-head"><div><div class="crumbs"><a href="#/teams">Teams</a></div><h1>' + esc(school) + '</h1><div class="sub">' + players.length + " drafted players</div></div></div>";
+    var html = '<div class="page-head"><div><div class="crumbs"><a href="#/teams">Teams</a></div><h1>' + esc(school) + '</h1><div class="sub">' + cs.length + " drafted players</div></div></div>";
     html += '<div class="tiles">' + tile("Fantasy points", fmt(t), fmt(gp) + " games &middot; " + fmt1(gp ? t / gp : 0) + " per game") +
-      tile("Best player", '<a href="#/player/' + encodeURIComponent(players[0].key) + '">' + esc(players[0].name) + "</a>", fmt(players[0].t) + " pts") +
-      tile("Hall of Famers", String(players.filter(function (p) { return p.status === "hof"; }).length), "") +
-      tile("Active", String(players.filter(function (p) { return p.status === "active"; }).length), "on a current roster") + "</div>";
-    var rows = players.map(function (p) {
-      return "<tr><td><a href='#/player/" + encodeURIComponent(p.key) + "'>" + esc(p.name) + "</a> " + (p.status === "hof" || p.status === "active" ? statusBadge(p.status) : "") + "</td><td>" + yearsText(p.years) +
-        "</td><td>" + p.owners.map(mgr).join(" ") + "</td><td class='n'>" + p.gp + "</td>" + statCells(p.s) + "<td class='n strong'>" + fmt(p.t) + "</td><td class='n'>" + fmt1(p.avg) + "</td><td class='n'>" + (p.rings || "") + "</td></tr>";
+      tile("Best player", '<a href="#/player/' + encodeURIComponent(cs[0].p.key) + '">' + esc(cs[0].p.name) + "</a>", fmt(cs[0].t) + " pts at " + esc(school)) +
+      tile("Hall of Famers", String(cs.filter(function (c) { return c.p.status === "hof"; }).length), "") +
+      tile("Active", String(cs.filter(function (c) { return c.active; }).length), "on a current roster") + "</div>";
+    var rows = cs.map(function (c) {
+      var p = c.p;
+      var other = c.moved ? ' <span class="muted" style="font-size:12px" title="Transferred">also ' + p.schools.filter(function (x) { return x !== school; }).map(slink).join(", ") + "</span>" : "";
+      return "<tr><td><a href='#/player/" + encodeURIComponent(p.key) + "'>" + esc(p.name) + "</a> " + (c.active ? statusBadge("active") : p.status === "hof" ? statusBadge("hof") : "") + other + "</td><td>" + yearsText(c.years) +
+        "</td><td>" + c.owners.map(mgr).join(" ") + "</td><td class='n'>" + c.gp + "</td>" + statCells(c.s) + "<td class='n strong'>" + fmt(c.t) + "</td><td class='n'>" + fmt1(c.avg) + "</td><td class='n'>" + (c.rings || "") + "</td></tr>";
     });
     rows.push("<tr class='total'><td>Total</td><td></td><td></td><td class='n'>" + fmt(gp) + "</td>" + statCells(s) + "<td class='n'>" + fmt(t) + "</td><td class='n'>" + fmt1(gp ? t / gp : 0) + "</td><td></td></tr>");
     html += card("Players", table("<th>Player</th><th>Years</th><th>Owner</th>" + th("GP", 1) + statHeads() + th("Total", 1) + th("Avg", 1) + th("Rings", 1), rows));
     var seasons = {};
-    players.forEach(function (p) {
-      p.seasons.forEach(function (x) { (seasons[x.year] = seasons[x.year] || []).push({ p: p, x: x }); });
-    });
+    cs.forEach(function (c) { c.lines.forEach(function (x) { (seasons[x.year] = seasons[x.year] || []).push({ p: c.p, x: x }); }); });
     var sRows = Object.keys(seasons).sort().reverse().map(function (y) {
       var list = seasons[y].sort(function (a, b) { return b.x.t - a.x.t; });
       return "<tr><td><a href='#/season/" + y + "'>" + seasonLabel(Number(y)) + "</a></td><td class='n strong'>" + fmt(list.reduce(function (a, o) { return a + o.x.t; }, 0)) + "</td><td style='white-space:normal'>" +

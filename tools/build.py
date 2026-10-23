@@ -76,6 +76,14 @@ def build():
         for name, info in (read_json(cfg).get("players") or {}).items():
             if info.get("school"):
                 schools.setdefault(player_key(name), info["school"])
+    # school per season, so transfers credit the right school: past seasons from
+    # data/season_schools.json (tools/import_schools.py), live seasons from the
+    # school update.py looked up for each player
+    past_schools = read_json(os.path.join(ROOT, "data", "season_schools.json"), {})
+
+    def season_school(year, season, name):
+        info = (season.get("players") or {}).get(name) or {}
+        return past_schools.get(str(year), {}).get(name) or info.get("school") or schools.get(player_key(name))
 
     season_list, champions = [], {}
     team_seasons, team_weeks, player_seasons, player_games = [], [], [], []
@@ -125,7 +133,8 @@ def build():
                                              "o": r.get("o"), "t": sum(r["s"]), "s": r["s"]})
             for k, ln in lines.items():
                 players[k]["seasons"].setdefault(year, []).append(
-                    {"m": m, "gp": ln["gp"], "s": ln["s"], "t": sum(ln["s"]), "zero": ln["zero"]})
+                    {"m": m, "gp": ln["gp"], "s": ln["s"], "t": sum(ln["s"]), "zero": ln["zero"],
+                     "school": season_school(year, s, ln["name"])})
                 if ln["gp"]:
                     player_seasons.append({"p": ln["name"], "key": k, "m": m, "year": year, "gp": ln["gp"],
                                            "t": sum(ln["s"]), **dict(zip(STATS, ln["s"])),
@@ -168,7 +177,7 @@ def build():
         if not reg:
             # March Madness only: no regular-season career, but still gets a page
             mm = [dict(year=y, **v) for y, v in sorted(p["mm"].items())]
-            index.append({"key": k, "name": p["spellings"].most_common(1)[0][0], "school": schools.get(k),
+            index.append({"key": k, "name": p["spellings"].most_common(1)[0][0], "school": schools.get(k), "schools": [],
                           "years": [], "owner": mm[-1]["m"], "owners": sorted({x["m"] for x in mm}), "rings": 0,
                           "gp": 0, "s": [0] * 5, "t": 0, "avg": 0, "zero": 0, "status": "mmOnly",
                           "seasons": [], "mm": mm})
@@ -194,7 +203,10 @@ def build():
         else:
             status = "ineligible"
         index.append({
-            "key": k, "name": name, "school": schools.get(k), "years": years,
+            "key": k, "name": name, "years": years,
+            # latest school, plus every school he played for (in order)
+            "school": next((l["school"] for y in reversed(years) for l in reg[y] if l.get("school")), schools.get(k)),
+            "schools": list(dict.fromkeys(l["school"] for y in years for l in reg[y] if l.get("school"))),
             "owner": owners.most_common(1)[0][0], "owners": sorted(owners), "rings": rings,
             "gp": gp, "s": tot, "t": total, "avg": round(total / gp, 2) if gp else 0,
             "zero": sum(l["zero"] for ls in reg.values() for l in ls), "status": status,

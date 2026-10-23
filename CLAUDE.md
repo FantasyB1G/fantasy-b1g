@@ -46,8 +46,8 @@ session it may not have network access or the API key anyway.
   Exceptions: Hall of Fame entries live in `data/extras.json` under `hof`. Rebuild
   with `python tools/build.py` after editing it.
 - Don't commit `.env` or the spreadsheet (both git-ignored).
-- Don't re-run `tools/import_xlsx.py` or `tools/import_schools.py`. They were
-  one-time imports of history.
+- Don't re-run `tools/import_xlsx.py`, `tools/import_schools.py` or
+  `tools/import_mm_schools.py`. They were one-time imports of history.
 - `data/demo/` and `tools/make_demo.py` are a preview mock. Never commit `data/demo/`.
 
 ## Code

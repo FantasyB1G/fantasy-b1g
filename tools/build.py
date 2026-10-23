@@ -85,6 +85,14 @@ def build():
         info = (season.get("players") or {}).get(name) or {}
         return past_schools.get(str(year), {}).get(name) or info.get("school") or schools.get(player_key(name))
 
+    # March Madness picks: data/mm_schools.json (tools/import_mm_schools.py) for past
+    # tournaments, the school typed at the draft for live ones
+    past_mm_schools = read_json(os.path.join(ROOT, "data", "mm_schools.json"), {})
+
+    def mm_school(year, mm, name):
+        info = (mm.get("players") or {}).get(name) or {}
+        return past_mm_schools.get(str(year), {}).get(name) or info.get("school")
+
     season_list, champions = [], {}
     team_seasons, team_weeks, player_seasons, player_games = [], [], [], []
     players = {}
@@ -148,6 +156,8 @@ def build():
                         "champion": st[0]["m"] if final and st else None})
         for r in st:
             mm_team.append({"m": r["m"], "year": year, "t": r["score"], **dict(zip(STATS, r["stats"]))})
+        if s.get("status") == "cancelled":
+            continue  # 2020: the sheet only holds a "COVID-19" note, no players
         for m, t in s["teams"].items():
             lines = {}
             for g in t["games"]:
@@ -160,7 +170,8 @@ def build():
                         ln["gp"] += 1
                         ln["s"] = [a + b for a, b in zip(ln["s"], r["s"])]
             for k, ln in lines.items():
-                players[k]["mm"][year] = {"m": m, "gp": ln["gp"], "s": ln["s"], "t": sum(ln["s"])}
+                players[k]["mm"][year] = {"m": m, "gp": ln["gp"], "s": ln["s"], "t": sum(ln["s"]),
+                                          "school": mm_school(year, s, ln["name"])}
                 if ln["gp"]:
                     mm_player.append({"p": ln["name"], "key": k, "m": m, "year": year, "gp": ln["gp"],
                                       "t": sum(ln["s"]), **dict(zip(STATS, ln["s"]))})
@@ -178,7 +189,9 @@ def build():
         if not reg:
             # March Madness only: no regular-season career, but still gets a page
             mm = [dict(year=y, **v) for y, v in sorted(p["mm"].items())]
-            index.append({"key": k, "name": p["spellings"].most_common(1)[0][0], "school": schools.get(k), "schools": [],
+            mm_schools = list(dict.fromkeys(x["school"] for x in mm if x.get("school")))
+            index.append({"key": k, "name": p["spellings"].most_common(1)[0][0],
+                          "school": mm_schools[-1] if mm_schools else schools.get(k), "schools": mm_schools,
                           "years": [], "owner": mm[-1]["m"], "owners": sorted({x["m"] for x in mm}), "rings": 0,
                           "gp": 0, "s": [0] * 5, "t": 0, "avg": 0, "zero": 0, "status": "mmOnly",
                           "seasons": [], "mm": mm})

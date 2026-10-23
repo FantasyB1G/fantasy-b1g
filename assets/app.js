@@ -825,7 +825,7 @@
             if (!r || !r.s) return "<td class='n muted'></td>";
             return "<td class='n' title='" + esc("G" + (gi + 1) + " " + (r.o || "") + ": " + r.s.join("-")) + "'>" + sum(r.s) + "</td>";
           }).join("");
-          return "<tr><td>" + plink(p) + "</td>" + cells + "<td class='n strong'>" + fmt(lines[p] ? lines[p].t : 0) + "</td></tr>";
+          return "<tr><td>" + logo(mmSchool(p, year)) + " " + plink(p) + "</td>" + cells + "<td class='n strong'>" + fmt(lines[p] ? lines[p].t : 0) + "</td></tr>";
         });
         var tot = teamSlotTotals(team);
         rows.push("<tr class='total'><td>Total</td>" + tot.map(function (s) { return "<td class='n'>" + (s.any ? s.t : "") + "</td>"; }).join("") +
@@ -1128,9 +1128,26 @@
     });
   }
 
+  function mmSchool(name, year) {
+    var k = pkey(name), p = IDX.players.filter(function (x) { return x.key === k; })[0];
+    var e = p && p.mm.filter(function (x) { return x.year === year; })[0];
+    return e && e.school;
+  }
+  // every March Madness pick who played for `school`, newest first
+  function schoolMM(school) {
+    var out = [];
+    IDX.players.forEach(function (p) { p.mm.forEach(function (x) { if (x.school === school) out.push({ p: p, x: x }); }); });
+    return out.sort(function (a, b) { return b.x.year - a.x.year || b.x.t - a.x.t; });
+  }
+  function mmPicksCard(list) {
+    return card("March Madness picks (" + list.length + ")", table("<th>Year</th><th>Player</th><th>Owner</th>" + th("GP", 1) + statHeads() + th("Total", 1), list.map(function (o) {
+      return "<tr><td><a href='#/mm/" + o.x.year + "'>" + o.x.year + "</a></td><td><a href='#/player/" + encodeURIComponent(o.p.key) + "'>" + esc(o.p.name) + "</a></td><td>" + mgr(o.x.m) +
+        "</td><td class='n'>" + o.x.gp + "</td>" + statCells(o.x.s) + "<td class='n strong'>" + fmt(o.x.t) + "</td></tr>";
+    })));
+  }
   function mmTable(p) {
-    return table("<th>Year</th><th>Owner</th>" + th("GP", 1) + statHeads() + th("Total", 1), p.mm.map(function (s) {
-      return "<tr><td><a href='#/mm/" + s.year + "'>" + s.year + "</a></td><td>" + mgr(s.m) + "</td><td class='n'>" + s.gp + "</td>" + statCells(s.s) + "<td class='n strong'>" + fmt(s.t) + "</td></tr>";
+    return table("<th>Year</th><th>School</th><th>Owner</th>" + th("GP", 1) + statHeads() + th("Total", 1), p.mm.map(function (s) {
+      return "<tr><td><a href='#/mm/" + s.year + "'>" + s.year + "</a></td><td>" + slink(s.school) + "</td><td>" + mgr(s.m) + "</td><td class='n'>" + s.gp + "</td>" + statCells(s.s) + "<td class='n strong'>" + fmt(s.t) + "</td></tr>";
     }));
   }
 
@@ -1178,8 +1195,14 @@
   }
 
   function pageTeam(school) {
-    var cs = schoolCareers(school);
-    if (!cs.length) return notFound("No drafted players from " + school + ".");
+    var cs = schoolCareers(school), mmc = schoolMM(school);
+    if (!cs.length && !mmc.length) return notFound("No drafted players from " + school + ".");
+    if (!cs.length) {
+      var tot = mmc.reduce(function (a, o) { return a + o.x.t; }, 0);
+      app.innerHTML = '<div class="page-head"><div><div class="crumbs"><a href="#/mm">March Madness</a></div><h1 style="display:flex;align-items:center;gap:12px">' + logo(school, 40) + esc(school) +
+        '</h1><div class="sub">' + mmc.length + " March Madness pick" + (mmc.length === 1 ? "" : "s") + " &middot; " + fmt(tot) + " fantasy points</div></div></div>" + mmPicksCard(mmc);
+      return;
+    }
     var t = 0, gp = 0, s = [0, 0, 0, 0, 0], owners = {};
     cs.forEach(function (c) {
       t += c.t; gp += c.gp; s = add(s, c.s);
@@ -1209,6 +1232,7 @@
       return "<tr><td>" + mgr(m) + "</td><td class='n strong'>" + fmt(owners[m]) + "</td></tr>";
     });
     html += '<div class="grid two">' + card("By season", table("<th>Season</th>" + th("Pts", 1) + "<th>Players</th>", sRows)) + card("Points by owner", table("<th>Owner</th>" + th("Fantasy pts", 1), oRows)) + "</div>";
+    if (mmc.length) html += mmPicksCard(mmc);
     app.innerHTML = html;
   }
 

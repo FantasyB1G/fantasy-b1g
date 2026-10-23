@@ -30,7 +30,12 @@
     s = s.replace(/[^a-z0-9 ]/g, "").replace(/\b(jr|sr|ii|iii|iv)\b/g, "");
     return s.replace(/\s+/g, " ").trim();
   }
-  function pkey(name) { var k = normName(name); return (IDX.aliases && IDX.aliases[k]) || k; }
+  // mmYear: a March Madness pick from that year (some share a name with someone else)
+  function pkey(name, mmYear) {
+    var k = normName(name);
+    k = (IDX.aliases && IDX.aliases[k]) || k;
+    return (mmYear && IDX.distinct && IDX.distinct["mm:" + mmYear + ":" + k]) || k;
+  }
   // assets/logos/<slug>.png (Big Ten schools); a missing logo just hides itself
   function logo(school, size) {
     if (!school) return "";
@@ -41,9 +46,9 @@
   function slink(school) {
     return school ? '<a class="school-link" href="#/team/' + encodeURIComponent(school) + '">' + logo(school) + esc(school) + "</a>" : "";
   }
-  function plink(name) {
+  function plink(name, mmYear) {
     if (!name) return '<span class="muted">--</span>';
-    return '<a href="#/player/' + encodeURIComponent(pkey(name)) + '">' + esc(name) + "</a>";
+    return '<a href="#/player/' + encodeURIComponent(pkey(name, mmYear)) + '">' + esc(name) + "</a>";
   }
 
   function getJSON(path) {
@@ -825,7 +830,7 @@
             if (!r || !r.s) return "<td class='n muted'></td>";
             return "<td class='n' title='" + esc("G" + (gi + 1) + " " + (r.o || "") + ": " + r.s.join("-")) + "'>" + sum(r.s) + "</td>";
           }).join("");
-          return "<tr><td>" + logo(mmSchool(p, year)) + " " + plink(p) + "</td>" + cells + "<td class='n strong'>" + fmt(lines[p] ? lines[p].t : 0) + "</td></tr>";
+          return "<tr><td>" + logo(mmSchool(p, year)) + " " + plink(p, year) + "</td>" + cells + "<td class='n strong'>" + fmt(lines[p] ? lines[p].t : 0) + "</td></tr>";
         });
         var tot = teamSlotTotals(team);
         rows.push("<tr class='total'><td>Total</td>" + tot.map(function (s) { return "<td class='n'>" + (s.any ? s.t : "") + "</td>"; }).join("") +
@@ -945,7 +950,7 @@
             return "<tr><td class='rank'>" + (i + 1) + "</td><td>" + mgr(x.m) + "</td><td><a href='#/mm/" + x.year + "'>" + x.year + "</a></td><td class='n strong'>" + fmt(x.t) + "</td></tr>";
           })) + '</div><div><h3 style="margin-bottom:8px">Best player tournaments</h3>' +
           table("<th></th><th>Player</th><th>Owner</th><th>Year</th>" + th("GP", 1) + th("Total", 1), R.mmPlayer.map(function (x, i) {
-            return "<tr><td class='rank'>" + (i + 1) + "</td><td>" + plink(x.p) + "</td><td>" + mgr(x.m) + "</td><td>" + x.year + "</td><td class='n'>" + x.gp + "</td><td class='n strong'>" + fmt(x.t) + "</td></tr>";
+            return "<tr><td class='rank'>" + (i + 1) + "</td><td>" + plink(x.p, x.year) + "</td><td>" + mgr(x.m) + "</td><td>" + x.year + "</td><td class='n'>" + x.gp + "</td><td class='n strong'>" + fmt(x.t) + "</td></tr>";
           })) + "</div></div>";
         return;
       }
@@ -1129,7 +1134,7 @@
   }
 
   function mmSchool(name, year) {
-    var k = pkey(name), p = IDX.players.filter(function (x) { return x.key === k; })[0];
+    var k = pkey(name, year), p = IDX.players.filter(function (x) { return x.key === k; })[0];
     var e = p && p.mm.filter(function (x) { return x.year === year; })[0];
     return e && e.school;
   }

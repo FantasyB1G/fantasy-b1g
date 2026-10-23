@@ -24,9 +24,17 @@ ALIASES = {
 }
 
 
-def player_key(name):
+# Different people who share a name: "<kind>:<year>:<norm name>" -> their own key.
+# kind is "mm" for a March Madness pick (regular-season rows keep the plain key).
+DISTINCT = {
+    "mm:2017:justin jackson": "justin jackson north carolina",  # UNC, not Maryland's Justin Jackson
+}
+
+
+def player_key(name, kind=None, year=None):
     k = norm_name(name)
-    return ALIASES.get(k, k)
+    k = ALIASES.get(k, k)
+    return DISTINCT.get(f"{kind}:{year}:{k}", k) if kind else k
 
 
 def season_label(year):

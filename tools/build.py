@@ -15,7 +15,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import ALIASES, MANAGERS, ROOT, STATS, player_key, read_json, write_json  # noqa: E402
+from common import ALIASES, DISTINCT, MANAGERS, ROOT, STATS, player_key, read_json, write_json  # noqa: E402
 
 TOP_N = 10
 HOF_MIN_GP, HOF_MIN_TOTAL = 20, 500
@@ -97,8 +97,8 @@ def build():
     team_seasons, team_weeks, player_seasons, player_games = [], [], [], []
     players = {}
 
-    def player(name):
-        k = player_key(name)
+    def player(name, k=None):
+        k = k or player_key(name)
         p = players.get(k)
         if not p:
             p = players[k] = {"key": k, "spellings": Counter(), "seasons": {}, "mm": {}}
@@ -164,7 +164,7 @@ def build():
                 for r in g:
                     if not r.get("p"):
                         continue
-                    p = player(r["p"])
+                    p = player(r["p"], player_key(r["p"], "mm", year))
                     ln = lines.setdefault(p["key"], {"gp": 0, "s": [0] * 5, "name": r["p"]})
                     if r.get("s"):
                         ln["gp"] += 1
@@ -285,6 +285,7 @@ def build():
         "built": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "managers": MANAGERS,
         "aliases": ALIASES,
+        "distinct": DISTINCT,
         "seasons": season_list,
         "mm": mm_list,
         "alltime": list(alltime.values()),

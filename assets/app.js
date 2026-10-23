@@ -969,10 +969,10 @@
         "<td class='n'>" + fmt(p.gp) + "</td><td class='n strong'>" + fmt(p.t) + "</td><td class='n'>" + fmt1(p.avg) + "</td><td class='n'>" + (p.rings || 0) + "</td></tr>";
     });
     var years = Object.keys(H.ballots || {}).sort().reverse();
-    var by = years[0];
+    var by = currentBallotYear();
     app.innerHTML = '<div class="page-head"><div><h1>Hall of Fame</h1><div class="sub">' + members.length + " inductees</div></div></div>" +
       card("Members", table("<th>Player</th><th>Owner</th><th>School</th><th>Years</th><th>Inducted</th>" + th("GP", 1) + th("Total", 1) + th("Avg", 1) + th("Rings", 1), mRows)) +
-      '<section class="card"><div class="card-head"><h2>Ballots</h2><select id="ballot-y" aria-label="Ballot year">' + years.map(function (y) { return "<option>" + y + "</option>"; }).join("") + '</select></div><div id="ballot"></div></section>' +
+      '<section class="card"><div class="card-head"><h2>Ballots</h2><select id="ballot-y" aria-label="Ballot year">' + years.map(function (y) { return "<option value='" + y + "'" + (y === by ? " selected" : "") + ">" + y + (y === by ? " (current)" : "") + "</option>"; }).join("") + '</select></div><div id="ballot"></div></section>' +
       card("Eligible, not yet nominated", eligibleTable()) +
       card("Rules", '<ul class="notes">' + (H.rules || []).map(function (r) { return "<li>" + esc(r) + "</li>"; }).join("") + "</ul>");
     function draw() {
@@ -995,39 +995,78 @@
   }
   function yearsText(ys) { return ys.length ? (ys[0] === ys[ys.length - 1] ? String(ys[0]) : ys[0] + "-" + ys[ys.length - 1]) : ""; }
 
+  // the ballot being voted on (hof.current; the admin's "Start ballot" moves it)
+  function currentBallotYear() {
+    var H = IDX.hof || {}, years = Object.keys(H.ballots || {}).sort();
+    return H.current && (H.ballots || {})[H.current] ? String(H.current) : years[years.length - 1];
+  }
+  function currentBallot() {
+    var y = currentBallotYear(), out = {};
+    ((IDX.hof.ballots || {})[y] || []).forEach(function (b) { if (b.player) out[pkey(b.player)] = b; });
+    return out;
+  }
+
   function pagePlayers() {
     var sortK = "t", dir = -1, q = "", own = "", stat = "";
-    app.innerHTML = '<div class="page-head"><div><h1>Players</h1><div class="sub">Everyone who\'s been rostered, regular season careers</div></div></div>' +
+    var ballot = currentBallot(), by = currentBallotYear();
+    var SUBS = {
+      "": "Everyone who’s been rostered, regular season careers",
+      ballot: by + " Hall of Fame ballot nominees, with current Hall of Famers for comparison",
+      mmOnly: "Players only ever drafted for March Madness: NCAA tournament totals",
+    };
+    app.innerHTML = '<div class="page-head"><div><h1>Players</h1><div class="sub" id="p-sub"></div></div></div>' +
       '<section class="card"><div class="controls" style="margin-bottom:12px"><input type="search" id="q" placeholder="Search player or school" aria-label="Search">' +
       '<select id="own" aria-label="Owner"><option value="">All owners</option>' + IDX.managers.map(function (m) { return "<option>" + m + "</option>"; }).join("") + "</select>" +
-      '<select id="stat" aria-label="Status"><option value="">All players</option><option value="active">Active</option><option value="hof">Hall of Fame</option><option value="eligible">HOF eligible</option><option value="mmOnly">March Madness only</option></select>' +
+      '<select id="stat" aria-label="Status"><option value="">All players</option><option value="active">Active</option><option value="hof">Hall of Fame</option>' +
+      '<option value="ballot">HOF Ballot</option><option value="mmOnly">March Madness only</option></select>' +
       '<span class="muted" id="count" style="font-size:13px"></span></div><div id="ptable"></div></section>';
     var cols = [["name", "Player", 0], ["school", "School", 0], ["years", "Years", 0], ["owner", "Owner", 0], ["gp", "GP", 1],
       ["pts", "PTS", 1], ["reb", "REB", 1], ["ast", "AST", 1], ["stl", "STL", 1], ["blk", "BLK", 1], ["t", "Total", 1], ["avg", "Avg", 1], ["rings", "Rings", 1]];
+    // March Madness-only players have no regular season: show tournament totals instead
+    function line(p) {
+      if (p.status !== "mmOnly") return p;
+      var s = [0, 0, 0, 0, 0], gp = 0;
+      p.mm.forEach(function (x) { s = add(s, x.s); gp += x.gp; });
+      var t = sum(s);
+      return { gp: gp, s: s, t: t, avg: gp ? t / gp : 0, years: p.mm.map(function (x) { return x.year; }), rings: 0, owner: p.owner };
+    }
     function v(p, k) {
-      var i = STATS.indexOf(k);
-      if (i >= 0) return p.s[i];
-      if (k === "years") return p.years[0];
+      var l = line(p), i = STATS.indexOf(k);
+      if (i >= 0) return l.s[i];
+      if (k === "years") return l.years[0] || 0;
+      if (k in l) return l[k] == null ? "" : l[k];
       return p[k] == null ? "" : p[k];
     }
+    function tag(p) {
+      var b = ballot[p.key];
+      if (stat === "ballot" && b) return '<span class="badge">ballot' + (b.yearsOnBallot ? " &middot; yr " + Number(b.yearsOnBallot) : "") + "</span>";
+      return p.status === "hof" || p.status === "active" ? statusBadge(p.status) : "";
+    }
     function draw() {
+      document.getElementById("p-sub").textContent = SUBS[stat] || SUBS[""];
       var ql = q.toLowerCase();
       var list = IDX.players.filter(function (p) {
         if (own && p.owners.indexOf(own) < 0) return false;
-        if (p.status === "mmOnly" && stat !== "mmOnly") return false;
-        if (stat === "eligible" ? !(p.status === "eligible" || p.status === "ballot") : stat && p.status !== stat) return false;
+        if (stat === "mmOnly") { if (p.status !== "mmOnly") return false; }
+        else if (p.status === "mmOnly") return false;
+        else if (stat === "ballot") { if (!ballot[p.key] && p.status !== "hof") return false; }
+        else if (stat && p.status !== stat) return false;
         return !ql || p.name.toLowerCase().indexOf(ql) >= 0 || (p.schools || []).concat([p.school]).join(" ").toLowerCase().indexOf(ql) >= 0;
       }).sort(function (a, b) {
         var x = v(a, sortK), y = v(b, sortK);
         return (typeof x === "string" ? x.localeCompare(y) : x - y) * dir;
       });
-      document.getElementById("count").textContent = list.length + " players";
+      document.getElementById("count").textContent = list.length + " players" +
+        (stat === "ballot" ? " (" + list.filter(function (p) { return ballot[p.key]; }).length + " on the " + by + " ballot)" : "");
       var head = cols.map(function (c) {
         return '<th class="sortable ' + (c[2] ? "n " : "") + (c[0] === sortK ? "sorted" : "") + '" data-k="' + c[0] + '">' + c[1] + (c[0] === sortK ? (dir < 0 ? " &darr;" : " &uarr;") : "") + "</th>";
       }).join("");
       var rows = list.map(function (p) {
-        return "<tr><td><a href='#/player/" + encodeURIComponent(p.key) + "'>" + esc(p.name) + "</a> " + (p.status === "hof" || p.status === "active" ? statusBadge(p.status) : "") + "</td><td>" + (p.schools && p.schools.length ? p.schools : [p.school]).filter(Boolean).map(slink).join(" / ") +
-          "</td><td>" + yearsText(p.years) + "</td><td>" + mgr(p.owner) + "</td><td class='n'>" + p.gp + "</td>" + statCells(p.s) + "<td class='n strong'>" + fmt(p.t) + "</td><td class='n'>" + fmt1(p.avg) + "</td><td class='n'>" + (p.rings || "") + "</td></tr>";
+        var l = line(p);
+        return "<tr" + (stat === "ballot" && p.status === "hof" ? " class='nc'" : "") + "><td><a href='#/player/" + encodeURIComponent(p.key) + "'>" + esc(p.name) + "</a> " + tag(p) + "</td><td>" +
+          (p.schools && p.schools.length ? p.schools : [p.school]).filter(Boolean).map(slink).join(" / ") +
+          "</td><td>" + yearsText(l.years) + "</td><td>" + mgr(l.owner) + "</td><td class='n'>" + l.gp + "</td>" + statCells(l.s) +
+          "<td class='n strong'>" + fmt(l.t) + "</td><td class='n'>" + fmt1(l.avg) + "</td><td class='n'>" + (l.rings || "") + "</td></tr>";
       });
       var el = document.getElementById("ptable");
       el.innerHTML = table(head, rows);

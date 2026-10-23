@@ -169,7 +169,8 @@ def build():
     hof = extras.get("hof", {})
     hof_keys = {player_key(h["player"]): h for h in hof.get("members", [])}
     ballot_years = sorted(hof.get("ballots", {}))
-    on_ballot = {player_key(b["player"]) for b in hof.get("ballots", {}).get(ballot_years[-1], [])} if ballot_years else set()
+    current = str(hof.get("current") or (ballot_years[-1] if ballot_years else ""))
+    on_ballot = {player_key(b["player"]) for b in hof.get("ballots", {}).get(current, []) if b.get("player")}
 
     index = []
     for k, p in players.items():

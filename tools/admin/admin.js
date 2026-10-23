@@ -325,7 +325,7 @@
     H.members = H.members || [];
     H.ballots = H.ballots || {};
     var years = Object.keys(H.ballots).sort().reverse();
-    if (!BALLOT_YEAR) BALLOT_YEAR = years[0];
+    if (!BALLOT_YEAR) BALLOT_YEAR = H.current && H.ballots[H.current] ? String(H.current) : years[0];
     var ownerSel = function (cls, i, v) {
       return '<select class="in ' + cls + '" data-i="' + i + '">' + opt("", "--", !v) + S.managers.map(function (m) { return opt(m, m, m === v); }).join("") + "</select>";
     };
@@ -350,7 +350,7 @@
       card("Ballot", '<p class="hint">3/4 of the vote gets a player in; 3/4 takes him off; 4 years max on the ballot. Eligible: career over, more than 20 games and 500 total points.</p>' +
         (bRows ? '<div class="tbl-wrap"><table><thead><tr><th>Player</th><th>Owner</th><th>Years</th><th>Yrs on ballot</th><th></th></tr></thead><tbody>' + bRows + "</tbody></table></div>" : '<p class="muted">No nominees.</p>') +
         '<div class="form-row"><button class="btn" id="b-add">+ Add nominee</button></div>',
-        '<div class="controls"><select class="in" id="b-year">' + years.map(function (y) { return opt(y, y + " ballot", y === BALLOT_YEAR); }).join("") +
+        '<div class="controls"><select class="in" id="b-year">' + years.map(function (y) { return opt(y, y + " ballot" + (String(H.current) === y ? " (current)" : ""), y === BALLOT_YEAR); }).join("") +
         '</select><button class="btn" id="b-new">Start ' + next + " ballot</button></div>"));
 
     function edit(list, inp) {
@@ -394,7 +394,7 @@
   // new ballot: holdovers (not inducted, under 4 years) + players whose careers just ended and qualify
   function startBallot(year) {
     var H = S.hof, prevYear = Object.keys(H.ballots).sort().reverse()[0];
-    if (H.ballots[year]) { BALLOT_YEAR = year; return drawHof(); }
+    if (H.ballots[year]) { BALLOT_YEAR = year; H.current = year; saveHof(); return drawHof(); }
     var inducted = {};
     H.members.forEach(function (m) { inducted[norm(m.player)] = 1; });
     var list = [];
@@ -411,6 +411,7 @@
       }
     });
     H.ballots[year] = list;
+    H.current = year;  // the site's "HOF Ballot" view follows this
     BALLOT_YEAR = year;
     saveHof();
     drawHof();

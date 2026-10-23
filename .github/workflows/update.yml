@@ -1,0 +1,33 @@
+# Optional: pulls new box scores every morning and commits them, so the site
+# stays current without you running anything. Needs the CBBD_API_KEY repo
+# secret (Settings > Secrets and variables > Actions); without it, it falls
+# back to the ESPN source. Remember to `git pull` before editing lineups.
+name: Update stats
+
+on:
+  schedule:
+    - cron: "0 11 * 11-12,1-4 *"   # 6am ET daily, Nov-Apr
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch stats and rebuild
+        env:
+          CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
+        run: python tools/update.py
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data league
+          git diff --cached --quiet || git commit -m "Update stats $(date -u +%Y-%m-%d)"
+          git push

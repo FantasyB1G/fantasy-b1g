@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fantasy B1G</title>
+  <meta name="description" content="Fantasy Big Ten basketball league: standings, rosters, history, records and Hall of Fame since 2015-16.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2314306b'/%3E%3Ctext x='16' y='22' font-family='Arial' font-weight='900' font-size='14' fill='white' text-anchor='middle'%3EB1G%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/style.css">
+  <script>
+    try { var t = localStorage.getItem("theme"); if (t) document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+  </script>
+</head>
+<body>
+  <header class="top">
+    <div class="top-inner">
+      <a class="brand" href="#/"><span class="logo">B1G</span> Fantasy B1G</a>
+      <nav class="main" id="nav">
+        <a href="#/" data-nav="home">Standings</a>
+        <a href="#/season" data-nav="season">Seasons</a>
+        <a href="#/mm" data-nav="mm">March Madness</a>
+        <a href="#/history" data-nav="history">History</a>
+        <a href="#/records" data-nav="records">Records</a>
+        <a href="#/players" data-nav="players">Players</a>
+        <a href="#/teams" data-nav="teams">Teams</a>
+        <a href="#/hof" data-nav="hof">Hall of Fame</a>
+      </nav>
+      <button class="theme-btn" id="theme" type="button" aria-label="Toggle dark mode">Dark</button>
+    </div>
+  </header>
+  <main id="app"><div class="loading">Loading...</div></main>
+  <footer class="foot" id="foot"></footer>
+  <script src="assets/app.js"></script>
+</body>
+</html>

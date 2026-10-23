@@ -9,7 +9,9 @@ files directly, so run this after any data change (update.py runs it for you).
     python tools/build.py
 """
 import glob
+import hashlib
 import os
+import re
 import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
@@ -60,6 +62,23 @@ def standings(season):
     for i, r in enumerate(rows):
         r["place"] = i + 1
     return rows
+
+
+def stamp_assets():
+    """Version the site's code: index.html loads app.js/style.css with ?v=<hash>,
+    and index.json records the same hash. A browser holding older code than the
+    data (GitHub Pages lets browsers cache files ~10 min) reloads itself once."""
+    h = hashlib.sha1()
+    for f in ("assets/app.js", "assets/style.css"):
+        h.update(open(os.path.join(ROOT, f), "rb").read())
+    v = h.hexdigest()[:10]
+    path = os.path.join(ROOT, "index.html")
+    html = open(path, encoding="utf-8").read()
+    new = re.sub(r'(assets/(?:app\.js|style\.css))(\?v=[0-9a-f]+)?"', lambda m: f'{m.group(1)}?v={v}"', html)
+    if new != html:
+        with open(path, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(new)
+    return v
 
 
 def top(items, key, n=TOP_N):
@@ -283,6 +302,7 @@ def build():
 
     out = {
         "built": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "assets": stamp_assets(),
         "managers": MANAGERS,
         "aliases": ALIASES,
         "distinct": DISTINCT,

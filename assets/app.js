@@ -2,6 +2,19 @@
 (function () {
   "use strict";
 
+  // the ?v= this copy of the code was loaded with (see stamp_assets in tools/build.py)
+  var CODE_V = ((document.currentScript && /[?&]v=([0-9a-f]+)/.exec(document.currentScript.src)) || [])[1];
+  // data published with newer code than this cached copy: reload once to get it
+  function staleCode(idx) {
+    if (!idx.assets || !CODE_V || idx.assets === CODE_V) return false;
+    try {
+      if (sessionStorage.getItem("reloadedFor") === idx.assets) return false;  // never loop
+      sessionStorage.setItem("reloadedFor", idx.assets);
+    } catch (e) { return false; }
+    location.reload();
+    return true;
+  }
+
   var STATS = ["pts", "reb", "ast", "stl", "blk"];
   var LABEL = { t: "Total", pts: "PTS", reb: "REB", ast: "AST", stl: "STL", blk: "BLK" };
   var IDX = null;
@@ -772,6 +785,7 @@
     return fetch("data/index.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (idx) {
       checking = false;
       if (idx.built === IDX.built) return false;
+      if (staleCode(idx)) return true;
       IDX = idx;
       cache = {};  // season files are re-fetched under the new version stamp
       setFooter();
@@ -1341,6 +1355,7 @@
   }
 
   fetch("data/index.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (idx) {
+    if (staleCode(idx)) return new Promise(function () {});  // reloading
     IDX = idx;
     if (!LIVE.demo) return;
     return getJSON("data/demo/meta.json").then(function (m) { LIVE.now = Date.parse(m.now); LIVE.label = m.label; },

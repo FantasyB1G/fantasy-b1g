@@ -51,7 +51,9 @@ session it may not have network access or the API key anyway.
 - `data/demo/` and `tools/make_demo.py` are a preview mock. Never commit `data/demo/`.
 
 ## Code
-- Site: `index.html`, `assets/app.js` (vanilla JS, no build step), `assets/style.css`.
+- Site: `index.html`, `assets/app.js` (vanilla JS), `assets/style.css`. After changing
+  app.js or style.css, run `python tools/build.py`: it re-stamps their `?v=` version
+  in index.html and index.json, so visitors with a cached copy reload the new code.
   Hash routes like `#/season/2026`, `#/team/Purdue`, `#/player/<key>`.
 - Live scores come from ESPN's public API in the browser (`applyLive` in app.js).
   Official numbers come from `data/seasons/<year>.json`.

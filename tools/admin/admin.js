@@ -428,8 +428,10 @@
     var b = this;
     busy(b, true, "Updating...");
     api("/api/update", {}).then(function (res) {
-      showLog("Update stats", res);
-      return load();
+      return load().then(function () {  // reload first -- redrawing would wipe the log
+        showLog("Update stats", res);
+        toast(res.ok ? "Stats updated" : "Update had a problem", !res.ok);
+      });
     }).catch(function (e) { toast(e.message, true); }).then(function () { busy(b, false, "Update stats"); });
   });
   document.getElementById("btn-publish").addEventListener("click", function () {

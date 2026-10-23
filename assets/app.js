@@ -171,7 +171,7 @@
   function lineChart(el, opt) {
     function draw() {
       var W = Math.max(280, el.clientWidth || 600), H = opt.height || 280;
-      var padL = 44, padR = opt.endLabels === false ? 12 : 74, padT = 12, padB = 30;
+      var padL = 44, padR = opt.endLabels === false ? 12 : 88, padT = 12, padB = 30;
       var iw = W - padL - padR, ih = H - padT - padB;
       var all = [];
       opt.series.forEach(function (s) { s.values.forEach(function (v) { if (v != null) all.push(v); }); });
@@ -205,14 +205,29 @@
         svg += '<path class="series" d="' + d + '" stroke="' + s.color + '"/>';
         if (last != null) {
           svg += '<circle class="dot" cx="' + x(last) + '" cy="' + y(s.values[last]) + '" r="4" fill="' + s.color + '"/>';
-          ends.push({ name: s.name, y: y(s.values[last]), x: x(last) });
+          ends.push({ name: s.name, y: y(s.values[last]), x: x(last), color: s.color });
         }
       });
       if (opt.endLabels !== false) {
+        // Always label every line. Where lines finish close together, spread the
+        // labels a minimum gap apart (kept inside the plot) and draw a thin leader
+        // in the series color from each line's end to its label.
+        var GAP = 15, top = padT, bottom = padT + ih;
         ends.sort(function (a, b) { return a.y - b.y; });
-        var clear = ends.every(function (e, i) { return i === 0 || e.y - ends[i - 1].y >= 14; });
-        if (clear) ends.forEach(function (e) {
-          svg += '<text class="end-label" x="' + (e.x + 8) + '" y="' + (e.y + 4) + '">' + esc(e.name) + "</text>";
+        ends.forEach(function (e, i) { e.ly = i ? Math.max(e.y, ends[i - 1].ly + GAP) : Math.max(e.y, top); });
+        var over = ends.length ? ends[ends.length - 1].ly - bottom : 0;
+        if (over > 0) {
+          for (var k = ends.length - 1; k >= 0; k--) {
+            ends[k].ly = Math.min(ends[k].ly - over, k < ends.length - 1 ? ends[k + 1].ly - GAP : bottom);
+          }
+        }
+        ends.forEach(function (e) {
+          var moved = Math.abs(e.ly - e.y) > 1, lx = e.x + (moved ? 20 : 8);
+          if (moved) {
+            svg += '<polyline points="' + (e.x + 6) + "," + e.y + " " + (e.x + 12) + "," + e.y + " " + (e.x + 17) + "," + e.ly +
+              '" fill="none" stroke="' + e.color + '" stroke-width="1" stroke-linejoin="round"/>';
+          }
+          svg += '<text class="end-label" x="' + lx + '" y="' + (e.ly + 4) + '">' + esc(e.name) + "</text>";
         });
       }
       svg += '<line class="xhair" id="xh" x1="0" x2="0" y1="' + padT + '" y2="' + (padT + ih) + '" style="display:none"/>';

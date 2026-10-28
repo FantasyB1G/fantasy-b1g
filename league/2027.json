@@ -5,13 +5,57 @@
   "pickupDates": ["2026-12-15", "2027-01-15", "2027-02-15"],
   "teams": {
     "Waldo": {
-      "draft": ["Andrej Stojakovic", "Rodney Rice", "", "Alijah Arenas", "Coen Carr", "", ""],
-      "bench": [],
+      "draft": [
+        "John Mobley Jr.",
+        "Rodney Rice",
+        "Trent Perry",
+        "Alijah Arenas",
+        "Bryce Lindsay",
+        "Stefan Vaaks",
+        "Jack Karasinski"
+      ],
+      "bench": [{"fromGame": 1, "player": "Jack Karasinski"}],
       "pickups": []
     },
-    "Michael": {"draft": ["", "", "David Mirkovic", "", "Cade Tyson", "", ""], "bench": [], "pickups": []},
-    "Brett": {"draft": ["", "", "", "", "", "Nolan Winter", ""], "bench": [], "pickups": []},
-    "Falan": {"draft": ["", "", "", "Pryce Sandfort", "", "", "Jeremy Fears Jr"], "bench": [], "pickups": []}
+    "Michael": {
+      "draft": [
+        "Pharrel Payne",
+        "Eric Dailey Jr.",
+        "David Mirkovic",
+        "Daniel Jacobsen",
+        "Jaylen Crocker-Johnson",
+        "Christian Gurdak",
+        "Owen Foxwell"
+      ],
+      "bench": [{"fromGame": 1, "player": "David Mirkovic"}],
+      "pickups": []
+    },
+    "Brett": {
+      "draft": [
+        "Elliot Cadeau",
+        "Moustapha Thiam",
+        "Quentin Coleman",
+        "Nikola Kusturica",
+        "Trey McKenney",
+        "Nolan Winter",
+        "Ivan Juric"
+      ],
+      "bench": [{"fromGame": 1, "player": "Ivan Juric"}],
+      "pickups": []
+    },
+    "Falan": {
+      "draft": [
+        "Tariq Francis",
+        "LeJuan Watts",
+        "Andrej Stojakovic",
+        "Pryce Sandfort",
+        "Amare Bynum",
+        "Samet Yigitoglu",
+        "Jeremy Fears Jr"
+      ],
+      "bench": [{"fromGame": 1, "player": "Samet Yigitoglu"}],
+      "pickups": []
+    }
   },
   "players": {
     "Andrej Stojakovic": {"school": "Illinois", "id": "5175007"},
@@ -22,7 +66,28 @@
     "Cade Tyson": {"school": "Minnesota", "id": null},
     "Nolan Winter": {"school": "Wisconsin", "id": "4895783"},
     "Pryce Sandfort": {"school": "Nebraska", "id": "4858604"},
-    "Jeremy Fears Jr": {"school": "Michigan State", "id": "4711255"}
+    "Jeremy Fears Jr": {"school": "Michigan State", "id": "4711255"},
+    "Pharrel Payne": {"school": "Maryland", "id": "5105823"},
+    "John Mobley Jr.": {"school": "Ohio State", "id": "5060708"},
+    "Elliot Cadeau": {"school": "Michigan", "id": "4869764"},
+    "Tariq Francis": {"school": "Rutgers", "id": "5175809"},
+    "Eric Dailey Jr.": {"school": "UCLA", "id": "4610012"},
+    "Moustapha Thiam": {"school": "Michigan", "id": "5149078"},
+    "LeJuan Watts": {"school": "Washington", "id": "5107312"},
+    "Trent Perry": {"school": "UCLA", "id": "5060706"},
+    "Quentin Coleman": {"school": "Illinois", "id": "5307569"},
+    "Daniel Jacobsen": {"school": "Purdue", "id": "5144147"},
+    "Nikola Kusturica": {"school": "UCLA", "id": "5369499"},
+    "Jaylen Crocker-Johnson": {"school": "Minnesota", "id": "4894462"},
+    "Bryce Lindsay": {"school": "Indiana", "id": "5174291"},
+    "Trey McKenney": {"school": "Michigan", "id": "5041954"},
+    "Amare Bynum": {"school": "Ohio State", "id": "5196946"},
+    "Christian Gurdak": {"school": "Rutgers", "id": "5101850"},
+    "Stefan Vaaks": {"school": "Illinois", "id": "5311991"},
+    "Samet Yigitoglu": {"school": "Indiana", "id": "5238184"},
+    "Owen Foxwell": {"school": "Wisconsin", "id": "5345014"},
+    "Jack Karasinski": {"school": "Northwestern", "id": "5106735"},
+    "Ivan Juric": {"school": "Penn State", "id": "5312025"}
   },
   "overrides": []
 }

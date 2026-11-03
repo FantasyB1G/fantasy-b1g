@@ -438,7 +438,9 @@
   // The official numbers come from data/seasons/<year>.json (written by
   // update.py). On the current season's page the browser also pulls today's
   // Big Ten scoreboard + box scores straight from ESPN and lays provisional
-  // live stats over the pending rows, applying the same bench rule.
+  // live stats over the pending rows, applying the same bench rule. Rostered
+  // games from earlier days that the official stats don't have yet are
+  // pulled the same way, so last night's results stay up until update.py runs.
   var ESPN = "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball";
   var LIVE = { demo: /[?&]demo=1/.test(location.search), now: null, timer: null };
   function nowMs() { return LIVE.now || Date.now(); }
@@ -455,9 +457,29 @@
   function scheduleFile(y) {
     return getJSON(LIVE.demo ? "data/demo/schedule.json" : "data/schedule/" + y + ".json").catch(function () { return null; });
   }
-  function fetchBoard() {
+  function fetchBoard(day) {
     if (LIVE.demo) return getJSON("data/demo/scoreboard.json");
-    return fetch(ESPN + "/scoreboard?dates=" + etDate(nowMs()) + "&groups=7&limit=100", { cache: "no-store" }).then(function (r) { return r.json(); });
+    return fetch(ESPN + "/scoreboard?dates=" + (day || etDate(nowMs())) + "&groups=7&limit=100", { cache: "no-store" }).then(function (r) { return r.json(); });
+  }
+  // ET days (YYYYMMDD, before today, last 7 days) with a rostered game the
+  // official stats still have as pending
+  function pendingDays(base, sched) {
+    var today = etDate(nowMs()), cutoff = etDate(nowMs() - 7 * 864e5), days = {};
+    if (!sched || LIVE.demo) return [];
+    base.managers.forEach(function (m) {
+      var team = base.teams[m];
+      if (!team) return;
+      team.games.forEach(function (g, gi) {
+        g.forEach(function (r) {
+          if (!r.p || r.st !== "pending") return;
+          var sc = sched[((base.players || {})[r.p] || {}).school], sg = sc && sc.games[gi];
+          if (!sg) return;
+          var d = etDate(Date.parse(sg.date));
+          if (d < today && d >= cutoff) days[d] = 1;
+        });
+      });
+    });
+    return Object.keys(days).sort();
   }
   function fetchBox(id) {
     if (LIVE.demo) return getJSON("data/demo/summary/" + id + ".json");
@@ -516,7 +538,8 @@
           r.tip = sg.date; r.tv = sg.tv; r.gid = sg.id;
           var ev = evById[sg.id];
           if (!ev) return;
-          r.lv = ev.state; r.lvd = ev.detail;
+          // an earlier day's final fills in quietly; it isn't "today"
+          if (!(ev.prev && ev.state === "post")) { r.lv = ev.state; r.lvd = ev.detail; }
           if (ev.state === "pre") return;
           touched = true;
           var box = boxes[ev.id];
@@ -756,21 +779,29 @@
     clearTimeout(LIVE.timer);
     var teamIds = {};
     Object.keys(view.base.players || {}).forEach(function (k) { var t = view.base.players[k].teamId; if (t) teamIds[t] = 1; });
+    var past = pendingDays(view.base, view.sched);
     function tick() {
       if (location.hash.replace(/^#\/?/, "") !== (view.home ? "" : "season/" + view.year)) return;  // navigated away
-      fetchBoard().then(function (board) {
-        var evs = normEvents(board);
+      Promise.all([fetchBoard()].concat(past.map(function (d) {
+        return fetchBoard(d).catch(function () { return {}; });
+      }))).then(function (boards) {
+        var evs = normEvents(boards[0]), seen = {};
+        evs.forEach(function (e) { seen[e.id] = 1; });
+        boards.slice(1).forEach(function (b) {
+          normEvents(b).forEach(function (e) { if (!seen[e.id]) { seen[e.id] = 1; e.prev = 1; evs.push(e); } });
+        });
         var need = evs.filter(function (e) { return e.state !== "pre" && (teamIds[e.home.id] || teamIds[e.away.id]); });
         return Promise.all(need.map(function (e) {
           return fetchBox(e.id).then(function (b) { return [e.id, parseBox(b)]; }).catch(function () { return [e.id, null]; });
         })).then(function (pairs) {
           var boxes = {};
           pairs.forEach(function (p) { if (p[1]) boxes[p[0]] = p[1]; });
-          view.events = evs; view.loaded = true; view.liveError = false; view.updated = nowMs();
+          // the scoreboard card shows today, plus any late game still going past midnight
+          view.events = evs.filter(function (e) { return !e.prev || e.state === "in"; }); view.loaded = true; view.liveError = false; view.updated = nowMs();
           view.season = applyLive(view.base, view.sched, evs, boxes);
           drawSeason(view);
           if (LIVE.demo) return;
-          var anyIn = evs.some(function (e) { return e.state === "in"; }), anyPre = evs.some(function (e) { return e.state === "pre"; });
+          var anyIn = evs.some(function (e) { return e.state === "in"; }), anyPre = evs.some(function (e) { return e.state === "pre" && !e.prev; });
           if (anyIn || anyPre) LIVE.timer = setTimeout(tick, anyIn ? 30000 : 300000);
         });
       }).catch(function (e) {

@@ -1,5 +1,5 @@
 # Pulls new box scores and commits them, so the site stays current without
-# you running anything. Runs every morning, whenever you push a change to the
+# you running anything. Runs a few times a day, whenever you push a change to the
 # league files (draft, bench, pickups, stat fixes), and on demand from the
 # Actions tab. Needs the CBBD_API_KEY repo secret (Settings > Secrets and
 # variables > Actions); without it, it falls back to the ESPN source.
@@ -8,10 +8,12 @@ name: Update stats
 
 on:
   schedule:
-    - cron: "0 11 * 11-12,1-4 *"   # 6am ET daily, Nov-Apr
+    # GitHub starts scheduled runs late (hours, at busy times), so run several
+    # times a day, off the top of the hour: ~1am, 6am and 11am ET, Nov-Apr
+    - cron: "23 6,11,16 * 11-12,1-4 *"
   push:
     branches: [main]
-    paths: ["league/**"]
+    paths: ["league/**", ".github/workflows/update.yml"]
   workflow_dispatch:
 
 permissions:

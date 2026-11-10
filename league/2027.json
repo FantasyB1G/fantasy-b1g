@@ -14,7 +14,7 @@
         "Stefan Vaaks",
         "Jack Karasinski"
       ],
-      "bench": [{"fromGame": 1, "player": "Jack Karasinski"}],
+      "bench": [{"fromGame": 1, "player": "Jack Karasinski"}, {"fromGame": 4, "player": "Bryce Lindsay"}],
       "pickups": []
     },
     "Michael": {

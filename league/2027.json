@@ -40,7 +40,7 @@
         "Nolan Winter",
         "Ivan Juric"
       ],
-      "bench": [{"fromGame": 1, "player": "Ivan Juric"}],
+      "bench": [{"fromGame": 1, "player": "Ivan Juric"}, {"fromGame": 4, "player": "Moustapha Thiam"}],
       "pickups": []
     },
     "Falan": {

@@ -1335,6 +1335,170 @@
     app.innerHTML = '<div class="empty" style="padding:60px 0">' + esc(msg || "Page not found.") + ' <a href="#/">Back to standings</a></div>';
   }
 
+  // ------------------------------------------------------------ quiz
+  // Sporcle-style: name every player ever rostered in a regular season.
+  // A full name or a last name counts (a shared last name fills in every
+  // match); typos are forgiven on Enter. Progress is kept while the page is
+  // open (switching tabs on the site keeps it), not across reloads.
+  var QUIZ = null;
+  function squash(s) { return normName(s).replace(/ /g, ""); }
+  // edit distance, adjacent swaps counting as one
+  function editDist(a, b) {
+    var d = [], i, j;
+    for (i = 0; i <= a.length; i++) { d[i] = [i]; }
+    for (j = 0; j <= b.length; j++) d[0][j] = j;
+    for (i = 1; i <= a.length; i++) {
+      for (j = 1; j <= b.length; j++) {
+        var c = a[i - 1] === b[j - 1] ? 0 : 1;
+        d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c);
+        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+      }
+    }
+    return d[a.length][b.length];
+  }
+  function typoAllowance(s) { return s.length >= 9 ? 2 : s.length >= 5 ? 1 : 0; }
+  function quizState() {
+    if (QUIZ) return QUIZ;
+    var aliasOf = {};
+    Object.keys(IDX.aliases || {}).forEach(function (k) { (aliasOf[IDX.aliases[k]] = aliasOf[IDX.aliases[k]] || []).push(k); });
+    var players = IDX.players.filter(function (p) { return p.years && p.years.length; }).map(function (p) {
+      var full = squash(p.name), rest = p.name.split(" ").slice(1).join(" ");
+      return { p: p, full: [full].concat((aliasOf[p.key] || []).map(squash)), last: squash(rest) || full };
+    });
+    players.sort(function (a, b) { return a.p.name.split(" ").slice(-1)[0].localeCompare(b.p.name.split(" ").slice(-1)[0]) || a.p.name.localeCompare(b.p.name); });
+    QUIZ = { players: players, found: {}, order: [], gaveUp: false };
+    return QUIZ;
+  }
+  // exact matches (full or last name) among players not yet found
+  function quizExact(q, g) {
+    return q.players.filter(function (x) { return !q.found[x.p.key] && (x.last === g || x.full.indexOf(g) >= 0); });
+  }
+  // closest misspelling within the allowance; every player tied at that distance
+  function quizFuzzy(q, g) {
+    var best = Infinity, hits = [];
+    q.players.forEach(function (x) {
+      var cands = x.full.concat([x.last]), d = Infinity;
+      cands.forEach(function (c) { if (Math.abs(c.length - g.length) <= 2) d = Math.min(d, editDist(g, c)); });
+      if (d > typoAllowance(g)) return;
+      if (d < best) { best = d; hits = [x]; } else if (d === best) hits.push(x);
+    });
+    return hits;  // may include players already found: then it's a repeat, not a miss
+  }
+  // still typing? ("Black" on the way to "Blackmon", "Tyson" to "Tyson Walker")
+  function quizMaybeLonger(q, g) {
+    var longer = function (c) { return c.length > g.length && c.indexOf(g) === 0; };
+    return q.players.some(function (x) { return !q.found[x.p.key] && (longer(x.last) || x.full.some(longer)); });
+  }
+
+  function pageQuiz() {
+    var q = quizState();
+    var total = q.players.length;
+    app.innerHTML = '<div class="page-head"><div><h1>Name every league player</h1><div class="sub">All ' + total +
+      " players ever rostered in a regular season since 2015-16. Last names count (a shared last name fills in every match), and close spellings count when you press Enter. If a name doesn&rsquo;t fill in as you type, press Enter.</div></div></div>" +
+      '<section class="card quiz-bar"><form id="qz-form" autocomplete="off"><input id="qz-in" type="text" placeholder="Type a player&rsquo;s name" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">' +
+      '<button type="submit" class="btn">Enter</button></form><div class="quiz-meta"><span class="quiz-count" id="qz-count"></span><span id="qz-msg" class="muted"></span>' +
+      '<span class="quiz-actions"><button type="button" class="btn ghost" id="qz-giveup">Give up</button><button type="button" class="btn ghost" id="qz-reset">Start over</button></span></div></section>' +
+      '<div class="grid two"><section class="card"><div class="card-head"><h2>By owner</h2></div><div id="qz-owners"></div></section>' +
+      '<section class="card"><div class="card-head"><h2>By season</h2></div><div id="qz-seasons" class="quiz-seasons"></div></section></div>' +
+      '<section class="card"><div class="card-head"><h2>By school</h2><span class="muted" style="font-size:13px">Players who transferred count for both schools; players owned by more than one manager count for each.</span></div><div id="qz-schools" class="quiz-schools"></div></section>';
+    var input = document.getElementById("qz-in"), msg = document.getElementById("qz-msg"), msgT;
+    function say(text, cls) {
+      clearTimeout(msgT);
+      msg.textContent = text; msg.className = cls || "muted";
+      msgT = setTimeout(function () { msg.textContent = ""; }, 2500);
+    }
+    function take(hits) {
+      hits.forEach(function (x) { q.found[x.p.key] = 1; q.order.push(x.p.key); });
+      input.value = "";
+      say(hits.map(function (x) { return x.p.name; }).join(", "), "quiz-ok");
+      draw(hits.map(function (x) { return x.p.key; }));
+    }
+    input.addEventListener("input", function () {
+      if (q.gaveUp) return;
+      var g = squash(input.value);
+      if (g.length < 2) return;
+      var hits = quizExact(q, g);
+      if (hits.length && !quizMaybeLonger(q, g)) take(hits);
+    });
+    document.getElementById("qz-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (q.gaveUp) return;
+      var g = squash(input.value);
+      if (!g) return;
+      var hits = quizExact(q, g);
+      if (!hits.length) {
+        var fz = quizFuzzy(q, g);
+        hits = fz.filter(function (x) { return !q.found[x.p.key]; });
+        if (!hits.length && fz.length) { input.value = ""; return say("Already got " + fz.map(function (x) { return x.p.name; }).join(", ")); }
+      }
+      if (hits.length) take(hits);
+      else { say("No match for “" + input.value.trim() + "”", "quiz-no"); input.select(); }
+    });
+    document.getElementById("qz-giveup").addEventListener("click", function () {
+      if (q.gaveUp || !confirm("Give up and show every player you missed?")) return;
+      q.gaveUp = true;
+      draw([]);
+    });
+    document.getElementById("qz-reset").addEventListener("click", function () {
+      if (q.order.length && !confirm("Clear all " + q.order.length + " guesses and start over?")) return;
+      q.found = {}; q.order = []; q.gaveUp = false;
+      input.value = "";
+      draw([]);
+      input.focus();
+    });
+    draw([]);
+    input.focus();
+
+    function draw(fresh) {
+      var isNew = {};
+      fresh.forEach(function (k) { isNew[k] = 1; });
+      var got = q.order.length;
+      document.getElementById("qz-count").innerHTML = "<b>" + got + "</b> / " + total + (q.gaveUp ? ' <span class="badge">gave up</span>' : got === total ? ' <span class="badge live">all found</span>' : "");
+      input.disabled = q.gaveUp || got === total;
+      document.getElementById("qz-giveup").disabled = q.gaveUp || got === total;
+      function tally(keyFn) {
+        var t = {};
+        q.players.forEach(function (x) {
+          keyFn(x.p).forEach(function (k) {
+            var r = t[k] = t[k] || { n: 0, got: 0, list: [] };
+            r.n++; r.list.push(x);
+            if (q.found[x.p.key]) r.got++;
+          });
+        });
+        return t;
+      }
+      function bar(got, n, color) {
+        return '<div class="bar-track"><div class="bar-fill" style="width:' + Math.round(100 * got / n) + "%;background:" + (color || "var(--accent-2, var(--link))") + '"></div></div>';
+      }
+      function left(r) { return r.got === r.n ? '<span class="quiz-done">✓</span>' : '<span class="muted">' + (r.n - r.got) + " left</span>"; }
+
+      var owners = tally(function (p) { return p.owners; });
+      document.getElementById("qz-owners").innerHTML = table("<th>Owner</th>" + th("Found", 1) + "<th></th><th></th>", IDX.managers.filter(function (m) { return owners[m]; }).map(function (m) {
+        var r = owners[m];
+        return "<tr><td>" + mgr(m) + "</td><td class='n'>" + r.got + " / " + r.n + "</td><td style='width:40%'>" + bar(r.got, r.n, mcolor(m)) + "</td><td class='n'>" + left(r) + "</td></tr>";
+      }));
+
+      var seasons = tally(function (p) { return p.years; });
+      document.getElementById("qz-seasons").innerHTML = Object.keys(seasons).sort().map(function (y) {
+        var r = seasons[y];
+        return '<div class="quiz-season' + (r.got === r.n ? " done" : "") + '"><div class="lbl">' + esc(seasonLabel(Number(y))) + '</div><div class="num">' + r.got + "/" + r.n + "</div>" + bar(r.got, r.n) + "</div>";
+      }).join("");
+
+      var schools = tally(function (p) { return p.schools; });
+      document.getElementById("qz-schools").innerHTML = Object.keys(schools).sort().map(function (s) {
+        var r = schools[s];
+        // found names stack at the top so the blanks don't give away alphabetical position
+        var list = q.gaveUp ? r.list : r.list.filter(function (x) { return q.found[x.p.key]; }).concat(r.list.filter(function (x) { return !q.found[x.p.key]; }));
+        var names = list.map(function (x) {
+          if (q.found[x.p.key]) return '<li class="' + (isNew[x.p.key] ? "new" : "") + '">' + plink(x.p.name) + "</li>";
+          return q.gaveUp ? '<li class="missed">' + plink(x.p.name) + "</li>" : '<li class="blank"></li>';
+        }).join("");
+        return '<div class="quiz-school' + (r.got === r.n ? " done" : "") + '"><div class="qs-head">' + logo(s, 18) + "<b>" + esc(s) + '</b><span class="n">' + r.got + "/" + r.n + "</span>" + left(r) + "</div>" +
+          bar(r.got, r.n) + "<ul>" + names + "</ul></div>";
+      }).join("");
+    }
+  }
+
   // ------------------------------------------------------------ router
   function route(keepScroll) {
     resizeHandlers = [];
@@ -1360,6 +1524,7 @@
       else if (page === "teams") p = pageTeams();
       else if (page === "team") p = pageTeam(parts[1]);
       else if (page === "manager") p = pageManager(parts[1]);
+      else if (page === "quiz") p = pageQuiz();
       else notFound();
     } catch (e) { showError(e); }
     if (p && p.catch) p.catch(showError);

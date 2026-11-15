@@ -530,13 +530,19 @@
       team.games.forEach(function (g, gi) {
         var touched = false;
         g.forEach(function (r) {
-          if (!r.p || r.st !== "pending") return;
+          if (!r.p) return;
           var info = players[r.p] || {}, sc = sched && sched[info.school];
           var sg = sc && sc.games[gi];
           if (!sg) return;
+          var ev = evById[sg.id];
+          if (r.st !== "pending") {
+            // already official (a stats update ran during the day): keep its
+            // numbers, but it's still one of today's games
+            if (ev && !ev.prev) { r.o = (sg.home || sg.neutral ? "vs " : "@ ") + sg.opp; r.tip = sg.date; r.tv = sg.tv; r.gid = sg.id; r.lv = ev.state; r.lvd = ev.detail; }
+            return;
+          }
           r.o = (sg.home || sg.neutral ? "vs " : "@ ") + sg.opp;
           r.tip = sg.date; r.tv = sg.tv; r.gid = sg.id;
-          var ev = evById[sg.id];
           if (!ev) return;
           // an earlier day's final fills in quietly; it isn't "today"
           if (!(ev.prev && ev.state === "post")) { r.lv = ev.state; r.lvd = ev.detail; }

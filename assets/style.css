@@ -388,3 +388,36 @@ footer.foot { padding-bottom: max(30px, env(safe-area-inset-bottom)); }
 .quiz-school li:last-child { border-bottom: 0; }
 .quiz-school li.new a { color: var(--good); font-weight: 650; }
 .quiz-school li.missed a { color: var(--bad); }
+.quiz-toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--ink-2); user-select: none; }
+.quiz-board { display: none; }
+/* leaderboard on: page widens, board sits to the right and scrolls on its own */
+main.quiz-with-board { max-width: 1840px; }
+.quiz-with-board .quiz-board { display: block; }
+.quiz-with-board .quiz-layout {
+  display: grid; gap: 0 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 900px);
+  grid-template-areas: "head head" "bar board" "rest board";
+  grid-template-rows: auto auto 1fr;
+}
+.quiz-with-board .quiz-layout > .page-head { grid-area: head; }
+.quiz-with-board .quiz-bar { grid-area: bar; }
+.quiz-with-board .quiz-rest { grid-area: rest; min-width: 0; }
+.quiz-with-board .quiz-board {
+  grid-area: board; align-self: start; position: sticky; top: 12px;
+  max-height: calc(100vh - 24px); overflow: auto; overscroll-behavior: contain; padding-top: 12px;
+}
+.quiz-board .tbl-wrap { overflow: visible; }
+.quiz-board-tbl { font-size: 12.5px; }
+.quiz-board-tbl th, .quiz-board-tbl td { padding: 4px 6px; }
+.quiz-board-tbl thead th { position: sticky; top: -12px; background: var(--surface); z-index: 1; box-shadow: inset 0 -1px 0 var(--grid); }
+.quiz-board-tbl tr.new td { background: color-mix(in srgb, var(--good) 14%, transparent); }
+.quiz-board-tbl .mgr { gap: 5px; font-weight: 500; }
+.quiz-sch { display: inline-flex; align-items: center; gap: 4px; }
+.quiz-blur { filter: blur(4.5px); color: var(--ink-2); user-select: none; pointer-events: none; }
+.quiz-missed { color: var(--bad); }
+@media (max-width: 1200px) {
+  .quiz-with-board .quiz-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "bar" "board" "rest"; grid-template-rows: none; }
+  .quiz-with-board .quiz-board { position: static; max-height: 65vh; }
+}
+.quiz-board-tbl td.own { white-space: normal; min-width: 70px; }
+.quiz-board-tbl td.own .mgr { margin-right: 4px; }

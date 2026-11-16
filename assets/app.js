@@ -1372,7 +1372,9 @@
       return { p: p, full: [full].concat((aliasOf[p.key] || []).map(squash)), last: squash(rest) || full };
     });
     players.sort(function (a, b) { return a.p.name.split(" ").slice(-1)[0].localeCompare(b.p.name.split(" ").slice(-1)[0]) || a.p.name.localeCompare(b.p.name); });
-    QUIZ = { players: players, found: {}, order: [], gaveUp: false };
+    var board = false;
+    try { board = !!localStorage.getItem("quizBoard"); } catch (e) { /* private mode */ }
+    QUIZ = { players: players, found: {}, order: [], gaveUp: false, board: board, sortK: "t", dir: -1 };
     return QUIZ;
   }
   // exact matches (full or last name) among players not yet found
@@ -1399,14 +1401,23 @@
   function pageQuiz() {
     var q = quizState();
     var total = q.players.length;
-    app.innerHTML = '<div class="page-head"><div><h1>Name every league player</h1><div class="sub">All ' + total +
+    app.innerHTML = '<div class="quiz-layout"><div class="page-head"><div><h1>Name every league player</h1><div class="sub">All ' + total +
       " players ever rostered in a regular season since 2015-16. Last names count (a shared last name fills in every match), and close spellings count when you press Enter. If a name doesn&rsquo;t fill in as you type, press Enter.</div></div></div>" +
       '<section class="card quiz-bar"><form id="qz-form" autocomplete="off"><input id="qz-in" type="text" placeholder="Type a player&rsquo;s name" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">' +
       '<button type="submit" class="btn">Enter</button></form><div class="quiz-meta"><span class="quiz-count" id="qz-count"></span><span id="qz-msg" class="muted"></span>' +
+      '<label class="quiz-toggle"><input type="checkbox" id="qz-board"' + (q.board ? " checked" : "") + "> Stats leaderboard</label>" +
       '<span class="quiz-actions"><button type="button" class="btn ghost" id="qz-giveup">Give up</button><button type="button" class="btn ghost" id="qz-reset">Start over</button></span></div></section>' +
-      '<div class="grid two"><section class="card"><div class="card-head"><h2>By owner</h2></div><div id="qz-owners"></div></section>' +
+      '<aside class="card quiz-board"><div class="card-head"><h2>Career leaderboard</h2><span class="muted" style="font-size:13px">Names show once you get them</span></div><div id="qz-board-tbl"></div></aside>' +
+      '<div class="quiz-rest"><div class="grid two"><section class="card"><div class="card-head"><h2>By owner</h2></div><div id="qz-owners"></div></section>' +
       '<section class="card"><div class="card-head"><h2>By season</h2></div><div id="qz-seasons" class="quiz-seasons"></div></section></div>' +
-      '<section class="card"><div class="card-head"><h2>By school</h2><span class="muted" style="font-size:13px">Players who transferred count for both schools; players owned by more than one manager count for each.</span></div><div id="qz-schools" class="quiz-schools"></div></section>';
+      '<section class="card"><div class="card-head"><h2>By school</h2><span class="muted" style="font-size:13px">Players who transferred count for both schools; players owned by more than one manager count for each.</span></div><div id="qz-schools" class="quiz-schools"></div></section></div></div>';
+    var boxEl = document.getElementById("qz-board");
+    function showBoard() {
+      app.classList.toggle("quiz-with-board", q.board);
+      try { localStorage.setItem("quizBoard", q.board ? "1" : ""); } catch (e) { /* private mode */ }
+    }
+    boxEl.addEventListener("change", function () { q.board = boxEl.checked; showBoard(); draw([]); });
+    showBoard();
     var input = document.getElementById("qz-in"), msg = document.getElementById("qz-msg"), msgT;
     function say(text, cls) {
       clearTimeout(msgT);
@@ -1502,6 +1513,51 @@
         return '<div class="quiz-school' + (r.got === r.n ? " done" : "") + '"><div class="qs-head">' + logo(s, 18) + "<b>" + esc(s) + '</b><span class="n">' + r.got + "/" + r.n + "</span>" + left(r) + "</div>" +
           bar(r.got, r.n) + "<ul>" + names + "</ul></div>";
       }).join("");
+
+      if (q.board) drawBoard(isNew);
+    }
+
+    // every player's regular-season career line; names stay blurred until found.
+    // Nothing here links anywhere (team and manager pages would give names away).
+    function drawBoard(isNew) {
+      var cols = [["name", "Player", 0], ["school", "School", 0], ["years", "Years", 0], ["owner", "Owner", 0], ["gp", "GP", 1],
+        ["pts", "PTS", 1], ["reb", "REB", 1], ["ast", "AST", 1], ["stl", "STL", 1], ["blk", "BLK", 1], ["t", "Total", 1], ["avg", "Avg", 1]];
+      function v(p, k) {
+        var i = STATS.indexOf(k);
+        if (i >= 0) return p.s[i];
+        if (k === "name") return q.found[p.key] || q.gaveUp ? p.name : "~";  // hidden names sort last
+        if (k === "school") return (p.schools && p.schools[0]) || p.school || "";
+        if (k === "years") return p.years[0];
+        return p[k] == null ? "" : p[k];
+      }
+      // stand-in letters the same length as the name, so nothing real sits under the blur
+      function hidden(name) {
+        return '<span class="quiz-blur" aria-label="hidden">' + name.split(" ").map(function (w) { return "nnnnnnnnnn".slice(0, Math.min(Math.max(w.length, 2), 10)); }).join(" ") + "</span>";
+      }
+      var list = q.players.map(function (x) { return x.p; }).sort(function (a, b) {
+        var x = v(a, q.sortK), y = v(b, q.sortK);
+        return (typeof x === "string" ? x.localeCompare(y) : x - y) * q.dir || b.t - a.t;
+      });
+      var head = '<th class="n">#</th>' + cols.map(function (c) {
+        return '<th class="sortable ' + (c[2] ? "n " : "") + (c[0] === q.sortK ? "sorted" : "") + '" data-k="' + c[0] + '">' + c[1] + (c[0] === q.sortK ? (q.dir < 0 ? " &darr;" : " &uarr;") : "") + "</th>";
+      }).join("");
+      var rows = list.map(function (p, i) {
+        var got = q.found[p.key], name = got ? plink(p.name) : q.gaveUp ? '<span class="quiz-missed">' + esc(p.name) + "</span>" : hidden(p.name);
+        var schools = (p.schools && p.schools.length ? p.schools : [p.school]).filter(Boolean);
+        return '<tr class="' + (isNew[p.key] ? "new" : got ? "got" : "") + '"><td class="n rank">' + (i + 1) + "</td><td>" + name + "</td><td>" +
+          schools.map(function (s) { return '<span class="quiz-sch">' + logo(s) + esc(s) + "</span>"; }).join(" / ") + "</td><td>" + yearsText(p.years) + "</td><td class='own'>" +
+          p.owners.map(function (m) { return '<span class="mgr">' + sw(m) + "<span>" + esc(m) + "</span></span>"; }).join(" ") + "</td><td class='n'>" + p.gp + "</td>" +
+          statCells(p.s) + "<td class='n strong'>" + fmt(p.t) + "</td><td class='n'>" + fmt1(p.avg) + "</td></tr>";
+      });
+      var el = document.getElementById("qz-board-tbl");
+      el.innerHTML = table(head, rows, "quiz-board-tbl");
+      el.querySelectorAll("th.sortable").forEach(function (h) {
+        h.addEventListener("click", function () {
+          var k = h.getAttribute("data-k");
+          if (k === q.sortK) q.dir = -q.dir; else { q.sortK = k; q.dir = ["name", "school", "owner", "years"].indexOf(k) >= 0 ? 1 : -1; }
+          drawBoard({});
+        });
+      });
     }
   }
 
@@ -1512,6 +1568,7 @@
     LIVE.tick = null;
     var parts = (location.hash.replace(/^#\/?/, "") || "").split("/").map(decodeURIComponent);
     var page = parts[0] || "home";
+    app.classList.remove("quiz-with-board");
     document.querySelectorAll("#nav a").forEach(function (a) {
       var nav = a.getAttribute("data-nav");
       a.classList.toggle("on", nav === page || (page === "manager" && nav === "history") || (page === "player" && nav === "players") || (page === "team" && nav === "teams"));

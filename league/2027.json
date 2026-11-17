@@ -53,7 +53,7 @@
         "Samet Yigitoglu",
         "Jeremy Fears Jr"
       ],
-      "bench": [{"fromGame": 1, "player": "Samet Yigitoglu"}],
+      "bench": [{"fromGame": 1, "player": "Samet Yigitoglu"}, {"fromGame": 5, "player": "Tariq Francis"}],
       "pickups": []
     }
   },

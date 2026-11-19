@@ -1,6 +1,6 @@
 # Pulls new box scores and commits them, so the site stays current without
 # you running anything. Runs a few times a day, whenever you push a change to the
-# league files (draft, bench, pickups, stat fixes), and on demand from the
+# league files (draft, bench, pickups, stat fixes) or the tools, and on demand from the
 # Actions tab. Needs the CBBD_API_KEY repo secret (Settings > Secrets and
 # variables > Actions); without it, it falls back to the ESPN source.
 # Its own commits don't re-trigger it (GitHub skips pushes made by workflows).
@@ -13,7 +13,7 @@ on:
     - cron: "23 6,11,16 * 11-12,1-4 *"
   push:
     branches: [main]
-    paths: ["league/**", ".github/workflows/update.yml"]
+    paths: ["league/**", "tools/**", ".github/workflows/update.yml"]
   workflow_dispatch:
 
 permissions:

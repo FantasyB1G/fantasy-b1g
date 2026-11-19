@@ -144,15 +144,24 @@ def _cbbd_games(school, season):
             continue  # NIT / CBI / exhibitions
         players = {}
         for p in g["players"]:
-            if not p.get("minutes"):
+            s = [p.get("points") or 0, (p.get("rebounds") or {}).get("total") or 0,
+                 p.get("assists") or 0, p.get("steals") or 0, p.get("blocks") or 0]
+            if not p.get("minutes") and not any(s):  # minutes can lag behind the stats
                 continue
-            players[str(p["athleteSourceId"])] = {
-                "name": p["name"],
-                "s": [p.get("points") or 0, (p.get("rebounds") or {}).get("total") or 0,
-                      p.get("assists") or 0, p.get("steals") or 0, p.get("blocks") or 0],
-            }
+            players[str(p["athleteSourceId"])] = {"name": p["name"], "s": s}
         out[bucket].append({"date": _local_date(g["startDate"]), "opp": _opp(g["isHome"], g["neutralSite"], g["opponent"]),
                             "players": players})
+    return _drop_unfilled(out)
+
+
+def _drop_unfilled(out):
+    """A game listed before its box score is filled in has nobody on the team
+    with stats; counting it would make every player a DNP. Leave a team's
+    latest such games out until the stats arrive (the site's live layer shows
+    them meanwhile)."""
+    for games in out.values():
+        while games and not games[-1]["players"]:
+            games.pop()
     return out
 
 
@@ -176,8 +185,9 @@ def _espn_box(event_id):
             ps[str(a["athlete"]["id"])] = {"name": a["athlete"]["displayName"],
                                            "s": [num("PTS"), num("REB"), num("AST"), num("STL"), num("BLK")]}
         teams[str(t["team"]["id"])] = ps
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    json.dump(teams, open(path, "w", encoding="utf-8"))
+    if any(teams.values()):  # an empty box score may just not be filled in yet: fetch it again next time
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        json.dump(teams, open(path, "w", encoding="utf-8"))
     return teams
 
 
@@ -201,7 +211,7 @@ def _espn_games(school, season):
                 "opp": _opp(me["homeAway"] == "home", c.get("neutralSite"), opp["team"]["location"]),
                 "players": box.get(tid, {}),
             })
-    return out
+    return _drop_unfilled(out)
 
 
 def espn_schedule(school, season):
